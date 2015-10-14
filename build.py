@@ -3,9 +3,24 @@
 
 import sys, os, time
 
-# Class.Method in Unity code
-buildMethod="BatchBuildMenu.BuildIOS"
 buildMode="release"
+
+# Class.Method in Unity code
+buildMethod="BatchBuildConfig.BuildIOS"
+
+pyPath = sys.argv[0]
+
+for arg in sys.argv:
+    if arg == "release":
+        buildMode="release"
+    elif arg == "debug":
+        buildMode="debug"
+    elif arg == "ios":
+        buildMethod="BatchBuildConfig.BuildIOS"
+    elif arg == "android":
+        buildMethod="BatchBuildConfig.BuildAndroid"
+    elif arg == "wp8":
+        buildMethod="BatchBuildConfig.BuildWP8"
 
 # --- run unity in batch mode ---
 def BuildUnityProject( projPath ):
@@ -32,7 +47,7 @@ def BuildUnityProject( projPath ):
     print "----------------------------------------------------------------------"
 
 # --- main func ---
-pyPath = sys.argv[0]
+            
 pyAbsPath = os.path.abspath(pyPath)
 n = pyAbsPath.find("/Assets/")
 if n < 0:
@@ -40,12 +55,5 @@ if n < 0:
     exit(0)
 else:
     projPath = pyAbsPath[0:n]
-    
-    for arg in sys.argv:
-        if arg == "release":
-            buildMode="release"
-        elif arg == "debug":
-            buildMode="debug"
-            
     BuildUnityProject( projPath )
 

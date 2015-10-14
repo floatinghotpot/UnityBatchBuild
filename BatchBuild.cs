@@ -25,23 +25,22 @@ public class BatchBuild : MonoBehaviour {
 		string locationPath = null;
 		BuildTargetGroup targetGroup = BuildTargetGroup.Unknown;
 
-		switch(target) {
-		case BuildTarget.Android:
+		if (target == BuildTarget.Android) {
 			target_dir = BatchBuildConfig.TARGET_PATH_ANDROID;
 			locationPath = target_dir + "/" + appName + ".apk";
-			targetGroup = BuildTargetGroup.Android; 
-			break;
-		case BuildTarget.iPhone:
+			targetGroup = BuildTargetGroup.Android;
+
+		} else if (target == BuildTarget.iOS) {
 			target_dir = BatchBuildConfig.TARGET_PATH_IOS; 
 			locationPath = target_dir;
-			targetGroup = BuildTargetGroup.iPhone; 
-			break;
-		case BuildTarget.WP8Player:
+			targetGroup = BuildTargetGroup.iOS;
+
+		} else if (target == BuildTarget.WP8Player) {
 			target_dir = BatchBuildConfig.TARGET_PATH_WP8;
 			locationPath = target_dir;
-			targetGroup = BuildTargetGroup.WP8; 
-			break;
-		default:
+			targetGroup = BuildTargetGroup.WP8;
+
+		} else {
 			Debug.LogError("No plan to support this platform yet.");
 			return;
 		}
@@ -54,6 +53,10 @@ public class BatchBuild : MonoBehaviour {
 		try {
 			if (Directory.Exists(target_dir)) {
 				Directory.Delete(target_dir, true);
+			}
+
+			if(! Directory.Exists(BatchBuildConfig.TARGET_PATH)) {
+				Directory.CreateDirectory(BatchBuildConfig.TARGET_PATH);
 			}
 			
 			Directory.CreateDirectory(target_dir); 
@@ -76,7 +79,7 @@ public class BatchBuild : MonoBehaviour {
 		}
 		
 		#if UNITY_EDITOR_OSX
-		if (target == BuildTarget.iPhone) {
+		if (target == BuildTarget.iOS) {
 			XcodeBuild.PatchAndBuild(target, locationPath);
 		}
 		#endif

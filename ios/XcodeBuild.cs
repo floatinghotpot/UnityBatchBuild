@@ -12,29 +12,14 @@ using UnityEditor.Callbacks;
 using UnityEditor.XCodeEditor;
 
 public static class XcodeBuild {
-	static string XcodeProjectPath = "";
 
-	public static void Test() {
-		System.IO.StreamWriter standardOutput = new System.IO.StreamWriter(System.Console.OpenStandardOutput());
-		standardOutput.AutoFlush = true;
-		System.Console.SetOut(standardOutput);
-
-		Console.WriteLine ("********** Test Unity Batch Mode ***********");
-	}
-
-	//[PostProcessBuild(999)]
 	public static void PatchAndBuild( BuildTarget target, string XcodeProjectPath ) {
-		Debug.Log ("PatchAndBuild: " + XcodeProjectPath);
-		return;
-
-		if (target != BuildTarget.iPhone) {
-			Debug.LogWarning("Target is not iPhone. XCodePostProcess will not run");
+		if (target != BuildTarget.iOS) {
+			Debug.LogWarning("Target is not iOS, skip.");
 			return;
 		}
 
-		// Post build with XUPorter, see it in: XCodePostProcess.cs
-		//[PostProcessBuild(999)]
-		DUPorter_ApplyMods(target, XcodeProjectPath);
+		PatchXCProject (XcodeProjectPath);
 
 		PatchPlist (XcodeProjectPath);
 
@@ -43,18 +28,9 @@ public static class XcodeBuild {
 		XcodeBuild_CLI (XcodeProjectPath);
 	}
 	
-	public static void DUPorter_ApplyMods( BuildTarget target, string pathToBuiltProject ) {
-		// Create a new project object from build target
+	public static void PatchXCProject( string pathToBuiltProject ) {
 		XCProject project = new XCProject( pathToBuiltProject );
-		
-		// Find and run through all projmods files to patch the project.
-		// Please pay attention that ALL projmods files in your project folder will be excuted!
-		string[] files = Directory.GetFiles( Application.dataPath, "*.projmods", SearchOption.AllDirectories );
-		foreach( string file in files ) {
-			UnityEngine.Debug.Log("ProjMod File: "+file);
-			project.ApplyMod( file );
-		}
-		
+
 		// TODO implement generic settings as a module option
 		project.overwriteBuildSetting("CODE_SIGN_IDENTITY[sdk=iphoneos*]", "iPhone Distribution", "Release");
 		
@@ -66,7 +42,7 @@ public static class XcodeBuild {
 	}
 	
 	private static void PatchPlist(string filePath) {
-		XCPlist plist = new XCPlist(filePath);
+		XCPlist plist = new XCPlist(filePath + "/Info.plist");
 
 		// Patch App Transport Security has blocked a cleartext HTTP
 		// Apple made a radical decision with iOS 9, disabling all unsecured HTTP traffic from iOS apps, as a part of App Transport Security.
@@ -80,6 +56,7 @@ public static class XcodeBuild {
 		dict.Add ("NSAllowsArbitraryLoads", true);
 		Hashtable toAdd = new Hashtable();
 		toAdd.Add ("NSAppTransportSecurity", dict);
+
 		plist.Process ( toAdd );
 	}
 
