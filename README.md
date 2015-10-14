@@ -23,7 +23,7 @@ $ git clone https://github.com/floatinghotpot/UnityBatchBuild BatchBuild
 # Now click Menu "MyTools" to start build
 
 # Or, you can also run CLI to start batch build
-$ BatchBuild/build.py [ios | android | wp8] [release | debug]
+$ BatchBuild/build.py [ios|android|wp8] [release|debug]
 
 ```
 

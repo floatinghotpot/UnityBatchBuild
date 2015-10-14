@@ -32,7 +32,7 @@ public static class XcodeBuild {
 		XCProject project = new XCProject( pathToBuiltProject );
 
 		// TODO implement generic settings as a module option
-		project.overwriteBuildSetting("CODE_SIGN_IDENTITY[sdk=iphoneos*]", "iPhone Distribution", "Release");
+		// project.overwriteBuildSetting("CODE_SIGN_IDENTITY[sdk=iphoneos*]", "iPhone Distribution", "Release");
 		
 		// TODO: patch for error: -fembed-bitcode is not supported on versions of iOS prior to 6.0
 
@@ -42,7 +42,14 @@ public static class XcodeBuild {
 	}
 	
 	private static void PatchPlist(string filePath) {
-		XCPlist plist = new XCPlist(filePath + "/Info.plist");
+		filePath = filePath + "/Info.plist";
+
+		if( !System.IO.Directory.Exists( filePath ) ) {
+			Debug.LogWarning( "Plist path does not exist: " + filePath );
+			return;
+		}
+
+		XCPlist plist = new XCPlist(filePath);
 
 		// Patch App Transport Security has blocked a cleartext HTTP
 		// Apple made a radical decision with iOS 9, disabling all unsecured HTTP traffic from iOS apps, as a part of App Transport Security.
