@@ -9,7 +9,16 @@ using System;
 using System.IO;
 
 public class BatchBuild : MonoBehaviour {
+	// --- common constants ---
 	
+	#if (UNITY_4_6 || UNITY_4_7 || UNITY_4_8)
+	public static BuildTarget BuildTarget_iOS = BuildTarget.iPhone;
+	public static BuildTargetGroup BuildTargetGroup_iOS = BuildTargetGroup.iPhone;
+	#else
+	public static BuildTarget BuildTarget_iOS = BuildTarget.iOS;
+	public static BuildTargetGroup BuildTargetGroup_iOS = BuildTargetGroup.iOS;
+	#endif
+
 	// Use this for initialization
 	void Start () {
 		
@@ -21,22 +30,25 @@ public class BatchBuild : MonoBehaviour {
 	}
 
 	public static void Build(string appName, string packageId, string version, BuildTarget target, BuildOptions options) {
+		string ProjPath = Application.dataPath.Replace("/Assets", "");
+		string targetPath = ProjPath + BatchBuildConfig.TARGET_DIR;
+
 		string target_dir = null;
 		string locationPath = null;
 		BuildTargetGroup targetGroup = BuildTargetGroup.Unknown;
 
 		if (target == BuildTarget.Android) {
-			target_dir = BatchBuildConfig.TARGET_PATH_ANDROID;
+			target_dir = targetPath + "/android";
 			locationPath = target_dir + "/" + appName + ".apk";
 			targetGroup = BuildTargetGroup.Android;
 
-		} else if (target == BuildTarget.iOS) {
-			target_dir = BatchBuildConfig.TARGET_PATH_IOS; 
+		} else if (target == BatchBuild.BuildTarget_iOS) {
+			target_dir = targetPath + "/ios";
 			locationPath = target_dir;
-			targetGroup = BuildTargetGroup.iOS;
+			targetGroup = BatchBuild.BuildTarget_iOS;
 
 		} else if (target == BuildTarget.WP8Player) {
-			target_dir = BatchBuildConfig.TARGET_PATH_WP8;
+			target_dir = targetPath + "/wp8";
 			locationPath = target_dir;
 			targetGroup = BuildTargetGroup.WP8;
 
@@ -47,18 +59,18 @@ public class BatchBuild : MonoBehaviour {
 		
 		PlayerSettings.bundleIdentifier = packageId;
 		PlayerSettings.bundleVersion = version;
-		PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, BatchBuildConfig.SCRIPT_DEFINE_SYMBOL);
+		PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, BatchBuildMenu.SCRIPT_DEFINE_SYMBOL);
 		
 		// Clean previous build
 		try {
+			if(! Directory.Exists(targetPath)) {
+				Directory.CreateDirectory(targetPath);
+			}
+			
 			if (Directory.Exists(target_dir)) {
 				Directory.Delete(target_dir, true);
 			}
 
-			if(! Directory.Exists(BatchBuildConfig.TARGET_PATH)) {
-				Directory.CreateDirectory(BatchBuildConfig.TARGET_PATH);
-			}
-			
 			Directory.CreateDirectory(target_dir); 
 			
 		} catch (Exception ex) {
@@ -72,15 +84,18 @@ public class BatchBuild : MonoBehaviour {
 		}
 		
 		// build pipeline
-		string res = BuildPipeline.BuildPlayer(BatchBuildConfig.SCENES, locationPath, target, options);   
+		string res = BuildPipeline.BuildPlayer(BatchBuildMenu.SCENES, locationPath, target, options);   
 		if (res.Length > 0)  {
 			throw new Exception("BuildPlayer failure: " + res);
 			return;
 		}
 		
 		#if UNITY_EDITOR_OSX
-		if (target == BuildTarget.iOS) {
-			XcodeBuild.PatchAndBuild(target, locationPath);
+		if (target == BatchBuild.BuildTarget_iOS) {
+			XcodeBuild.Patch(locationPath);
+
+			// TODO: instead of build
+			// XcodeBuild.Build(locationPath);
 		}
 		#endif
 	}

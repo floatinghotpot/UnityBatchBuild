@@ -13,11 +13,7 @@ using UnityEditor.XCodeEditor;
 
 public static class XcodeBuild {
 
-	public static void PatchAndBuild( BuildTarget target, string XcodeProjectPath ) {
-		if (target != BuildTarget.iOS) {
-			Debug.LogWarning("Target is not iOS, skip.");
-			return;
-		}
+	public static void Patch( string XcodeProjectPath ) {
 
 		PatchXCProject (XcodeProjectPath);
 
@@ -25,7 +21,6 @@ public static class XcodeBuild {
 
 		PatchSourceCode (XcodeProjectPath);
 
-		XcodeBuild_CLI (XcodeProjectPath);
 	}
 	
 	public static void PatchXCProject( string pathToBuiltProject ) {
@@ -50,21 +45,8 @@ public static class XcodeBuild {
 		}
 
 		XCPlist plist = new XCPlist(filePath);
-
-		// Patch App Transport Security has blocked a cleartext HTTP
-		// Apple made a radical decision with iOS 9, disabling all unsecured HTTP traffic from iOS apps, as a part of App Transport Security.
-		string PlistAdd = @"
-<key>NSAppTransportSecurity</key>
-<dict>
-	<key>NSAllowsArbitraryLoads</key>
-	<true/>
-</dict>";
-		Hashtable dict = new Hashtable ();
-		dict.Add ("NSAllowsArbitraryLoads", true);
-		Hashtable toAdd = new Hashtable();
-		toAdd.Add ("NSAppTransportSecurity", dict);
-
-		plist.Process ( toAdd );
+		Hashtable entries = new Hashtable ();
+		plist.Process ( entries );
 	}
 
 	private static void PatchSourceCode(string filePath) {
@@ -77,9 +59,8 @@ public static class XcodeBuild {
 		
 		//UnityAppController.Save();
 	}
-	
-	public static void XcodeBuild_CLI( string pathToBuiltProject )
-	{
+
+	public static void Build( string pathToBuiltProject ) {
 		// Running: /usr/bin/Xcodebuild build  -project /Users/liming/workspace/LMGame/Client/Target/ios/Unity-iPhone.xcodeproj 
 
 		String build_args = 
@@ -100,7 +81,7 @@ public static class XcodeBuild {
 				"";
 
 		System.Diagnostics.Process proc = new System.Diagnostics.Process();
-		proc.StartInfo.FileName = BatchBuildConfig.XCODEBUILD_CLI;
+		proc.StartInfo.FileName = "/usr/bin/Xcodebuild";
 		proc.StartInfo.Arguments = build_args;
 		proc.StartInfo.UseShellExecute = true;
 		proc.Start();
