@@ -19,16 +19,6 @@ public class BatchBuild : MonoBehaviour {
 	public static BuildTargetGroup BuildTargetGroup_iOS = BuildTargetGroup.iOS;
 	#endif
 
-	// Use this for initialization
-	void Start () {
-		
-	}
-	
-	// Update is called once per frame
-	void Update () {
-		
-	}
-
 	public static void Build(string appName, string packageId, string version, BuildTarget target, BuildOptions options) {
 		string ProjPath = Application.dataPath.Replace("/Assets", "");
 		string targetPath = ProjPath + BatchBuildConfig.TARGET_DIR;
@@ -45,7 +35,7 @@ public class BatchBuild : MonoBehaviour {
 		} else if (target == BatchBuild.BuildTarget_iOS) {
 			target_dir = targetPath + "/ios";
 			locationPath = target_dir;
-			targetGroup = BatchBuild.BuildTarget_iOS;
+			targetGroup = BatchBuild.BuildTargetGroup_iOS;
 
 		} else if (target == BuildTarget.WP8Player) {
 			target_dir = targetPath + "/wp8";
@@ -59,7 +49,9 @@ public class BatchBuild : MonoBehaviour {
 		
 		PlayerSettings.bundleIdentifier = packageId;
 		PlayerSettings.bundleVersion = version;
-		PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, BatchBuildMenu.SCRIPT_DEFINE_SYMBOL);
+		for(int i=0; i<BatchBuildConfig.DEFINE_MACRO.Length; i++) {
+			PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, BatchBuildConfig.DEFINE_MACRO);
+		}
 		
 		// Clean previous build
 		try {
@@ -89,15 +81,6 @@ public class BatchBuild : MonoBehaviour {
 			throw new Exception("BuildPlayer failure: " + res);
 			return;
 		}
-		
-		#if UNITY_EDITOR_OSX
-		if (target == BatchBuild.BuildTarget_iOS) {
-			XcodeBuild.Patch(locationPath);
-
-			// TODO: instead of build
-			// XcodeBuild.Build(locationPath);
-		}
-		#endif
 	}
 }
 
