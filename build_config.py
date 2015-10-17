@@ -3,19 +3,47 @@
 
 import os
 
-#from Foundation import NSMutableDictionary
-
-# See: https://github.com/kronenthaler/mod-pbxproj
-#from mod_pbxproj import XcodeProject
-
 UNITY_SMCS = {
     "common": "-define:LMGAME;",
     "debug":"-define:DEV_VERSION;EnableChinese;", 
     "release":"-define:DISTRIBUTION_VERSION;EnableChinese;CODESTRIPPER;"
 }
 
-IOS_PROVISION_PATH = os.path.expanduser("~") +"/Library/MobileDevice/Provisioning Profiles"
+# ----------------------------------------------
+DIR_INFO = {
+    # icons put under APP_ICON_SPLASH_DIR/<target>/icons/, like
+    # ./Res/360/icons/Icon-57.png, 
+    # ./Res/360/splash/Default-568h@2x~iphone, 
+    "res_dir": "/Res",
+    
+    # target build projects will be "/Target/<target>", like ./Target/ios, /Target/360, etc.
+    "target_dir": "/Target",
+    
+    # xcode provision files located here, by default
+    "ios_profile_dir": os.path.expanduser("~") +"/Library/MobileDevice/Provisioning Profiles"
+}
 
+# ----------------------------------------------
+# after build, copy the packages to remote host
+# if use scp, need setup user ssh key to <host>/~/.ssh/authorized_keys
+# the password here only for FTP
+REMOTE_INFO = {
+    "enabled": False,
+    
+    "tool": "scp", # or "ftp"
+    
+    "host": "host.domain.com",
+    "username": "zhang3",
+    "password": "*****",
+    "passiveMode": False,
+    "remote_dir": "~/backup",
+
+    # execute on remote host, before & after copy each file, ssh host "shell script"
+    "pre_ssh_shell": "ls -l",
+    "post_ssh_shell": "cd ~/backup; ls -la {filename}"
+    }
+
+# ----------------------------------------------
 IOS_PROVISION_CERT = {
     "debug": {
         "id": "com.uniq.LMDemo", 
@@ -29,8 +57,11 @@ IOS_PROVISION_CERT = {
     }
 }
 
-# build package for every publish channels
+# ----------------------------------------------
+APP_MAJOR_VERSION = "0.5"; # will get build number from svn revision
 
+# ----------------------------------------------
+# build package for every publish channels
 TARGET_PACKAGES = {
     "ios" : { # apple app store
         "enabled": True,
@@ -62,18 +93,8 @@ TARGET_PACKAGES = {
     }
 }
 
-APP_MAJOR_VERSION = "0.5"; # will get build number from svn revision
-
-# icons put under APP_ICON_SPLASH_DIR/<target>/icons/, like
-# ./Res/360/icons/Icon-57.png, 
-# ./Res/360/splash/Default-568h@2x~iphone, 
-APP_ICON_SPLASH_DIR = "/Res"
-
-# actual target will be "/Target/<target>", like ./Target/ios, /Target/360, etc.
-TARGET_DIR = "/Target"
-
-# TODO: put all 3pp SDK appid/appkey here
-
+# ----------------------------------------------
+# put all 3pp SDK appid/appkey here
 SDK_3PP_IOS = {
     "QQ" : {
         "enabled" : False,
@@ -113,16 +134,10 @@ SDK_3PP_ANDROID = {
 # ----------------------------------------------
 def ModifyXcodeProject( project, buildMode ):
     # add System Framework
-    project.add_file('System/Library/Frameworks/CoreTelephony.framework', tree='SDKROOT')
     project.add_file('System/Library/Frameworks/SystemConfiguration.framework', tree='SDKROOT')
-    project.add_file('System/Library/Frameworks/UIKit.framework', tree='SDKROOT')
     project.add_file('System/Library/Frameworks/Foundation.framework', tree='SDKROOT')
-    project.add_file('System/Library/Frameworks/CoreGraphics.framework', tree='SDKROOT')
-    project.add_file('System/Library/Frameworks/CFNetwork.framework', tree='SDKROOT')
     project.add_file('System/Library/Frameworks/StoreKit.framework', tree='SDKROOT')
-    project.add_file('System/Library/Frameworks/MobileCoreServices.framework', tree='SDKROOT')
-    project.add_file('System/Library/Frameworks/AdSupport.framework', tree='SDKROOT',weak=True)
-    project.add_file('usr/lib/libz.dylib', tree='SDKROOT')
+    #project.add_file('usr/lib/libz.dylib', tree='SDKROOT')
     
     # -all_load, some SDK use auto reference counting but some project not, 
     # this link flag will cause duplicated error
@@ -130,12 +145,15 @@ def ModifyXcodeProject( project, buildMode ):
     # -fembed-bitcode is not supported on versions of iOS prior to 6.0
     # it's required by iWatch APP, but optional for iOS
     project.remove_flags ( {
+            'ENABLE_BITCODE' : 'YES',
+            'ARCHS' : 'arm7v',
             'IPHONEOS_DEPLOYMENT_TARGET': '4.3',
-            'OTHER_CFLAGS':'-fembed-bitcode',
             'OTHER_LDFLAGS':'-all_load'
-        });
+        } );
     
     project.add_flags( {
+            'ENABLE_BITCODE' : 'NO',
+            'ARCHS' : '$(ARCHS_STANDARD)',
             'IPHONEOS_DEPLOYMENT_TARGET': '6.0'
         } )
 
@@ -144,7 +162,7 @@ def ModifyXcodeProject( project, buildMode ):
 # ----------------------------------------------
 def ModifyPlist( plist, buildMode ):
     # --- Allow HTTP ---
-	# Apple made a radical decision with iOS 9, disabling all unsecured HTTP traffic from iOS apps, as a part of App Transport Security.
+    # Apple made a radical decision with iOS 9, disabling all unsecured HTT.
     plist['NSAppTransportSecurity'] = { 'NSAllowsArbitraryLoads':True }
 
     url_types = []
