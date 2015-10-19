@@ -56,17 +56,17 @@ POST_BUILD_SCRIPTS = {
     "enabled": True,
     "debug": [
         "ls -la {package}",
-        "scp {package} raymond@192.168.0.200:~/tmp/{name}-{target}-{version}{package_ext}",
+        "scp {package} liming@localhost:~/tmp/{name}-{target}-{version}{package_ext}",
         
         # --- package streaming assets to tgz ---
-        #"mkdir ./{bytes_dirname}",
+        "mkdir ./{bytes_dirname}",
         #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
-        #"tar cfz {target_path}/bytes.tgz {bytes_dirname}",
-        #"rm -r ./{bytes_dirname}",
-        #"ls -la {target_path}/bytes.tgz",
-        #"scp {target_path}/bytes.tgz raymond@192.168.0.200:~/tmp/{name}-{target}-{version}.tgz",
+        "tar cfz {target_path}/bytes.tgz {bytes_dirname}",
+        "rm -r ./{bytes_dirname}",
+        "ls -la {target_path}/bytes.tgz",
+        "scp {target_path}/bytes.tgz liming@localhost:~/tmp/{name}-{target}-{version}.tgz",
         
-        "ssh raymond@192.168.0.200 'ls -la ~/tmp'"
+        "ssh liming@localhost 'ls -la ~/tmp'"
     ],
     "release": [
         # if use ssh/scp without password, need setup user ssh pub key to <host>/~/.ssh/authorized_keys
@@ -206,6 +206,12 @@ def ModifyXcodeProject( project, buildMode ):
 
 # ----------------------------------------------
 def ModifyPlist( plist, buildMode ):
+    # landscape orientation only
+    plist['UISupportedInterfaceOrientations'] = [
+        'UIInterfaceOrientationLandscapeLeft',
+        'UIInterfaceOrientationLandscapeRight',
+    ];
+    
     # --- Allow HTTP ---
     # Apple made a radical decision with iOS 9, disabling all unsecured HTT.
     plist['NSAppTransportSecurity'] = { 'NSAllowsArbitraryLoads':True }
