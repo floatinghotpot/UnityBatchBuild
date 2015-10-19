@@ -50,12 +50,6 @@ public class BatchBuildMenu {
 		                  BuildTarget.WP8Player, 
 		                  BuildOptions.Development | BuildOptions.ConnectWithProfiler);
 	}
-	
-	[MenuItem ("LMTools/Build All")]
-	public static void BuildAll() {
-		BuildIOS ();
-		BuildAndroid ();
-	}
 }
 
 #endif

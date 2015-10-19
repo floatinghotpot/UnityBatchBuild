@@ -5,7 +5,8 @@ Batch build toolset for Unity, written in python
 
 Just run 
 ```bash
-./build.py [ios|android|wp8|360|xiaomi|...|all] [debug|release]
+./batch.py {action} {targets} {build mode} 
+./batch.py [clean | build | archive | -c | -b | -a] [ios|android|wp8|360|xiaomi|...|all] [--debug | --release | -d | -r ]
 ```
 
 Batch job to finish following boring work:
@@ -15,10 +16,10 @@ Batch job to finish following boring work:
 * Modify xcode project settings, plist & resource
 * Call Xcodebuild batch mode
 * Pack the Xcode .app to .ipa
-* Archive packages to remote host with SCP or FTP
-* Execute pre-configured shell script on remote host before & after copying file
+* Archive packages and streaming assets to remote host with SCP
+* Run pre-configured shell script on local and remote host
 
-Single command "./build.py all" to do everything, and it can also be integrated with daily build.
+Single command "./batch.py -c -b -a all" to do everything, and it can also be integrated with daily build.
 
 # Dependency
 
@@ -48,7 +49,8 @@ $ git clone https://github.com/floatinghotpot/UnityBatchBuild BatchBuild
 # ... configure the build settings in build_config.py ...
 
 # run build.py to start batch build
-$ BatchBuild/build.py [ios|android|wp8|360|xiaomi|...|all] [debug|release]
+./batch.py clean build archive all --release
+./batch.py -c -b -a all -r
 ```
 
 # Credits

@@ -4,44 +4,10 @@
 import os
 
 UNITY_SMCS = {
-    "common": "-define:LMGAME;",
+    "common": "-unsafe\n-define:LMGAME;",
     "debug":"-define:DEV_VERSION;EnableChinese;", 
     "release":"-define:DISTRIBUTION_VERSION;EnableChinese;CODESTRIPPER;"
 }
-
-# ----------------------------------------------
-DIR_INFO = {
-    # icons put under APP_ICON_SPLASH_DIR/<target>/icons/, like
-    # ./Res/360/icons/Icon-57.png, 
-    # ./Res/360/splash/Default-568h@2x~iphone, 
-    "res_dir": "/Res",
-    
-    # target build projects will be "/Target/<target>", like ./Target/ios, /Target/360, etc.
-    "target_dir": "/Target",
-    
-    # xcode provision files located here, by default
-    "ios_profile_dir": os.path.expanduser("~") +"/Library/MobileDevice/Provisioning Profiles"
-}
-
-# ----------------------------------------------
-# after build, copy the packages to remote host
-# if use scp, need setup user ssh key to <host>/~/.ssh/authorized_keys
-# the password here only for FTP
-REMOTE_INFO = {
-    "enabled": False,
-    
-    "tool": "scp", # or "ftp"
-    
-    "host": "host.domain.com",
-    "username": "zhang3",
-    "password": "*****",
-    "passiveMode": False,
-    "remote_dir": "~/backup",
-
-    # execute on remote host, before & after copy each file, ssh host "shell script"
-    "pre_ssh_shell": "ls -l",
-    "post_ssh_shell": "cd ~/backup; ls -la {filename}"
-    }
 
 # ----------------------------------------------
 IOS_PROVISION_CERT = {
@@ -61,6 +27,73 @@ IOS_PROVISION_CERT = {
 APP_MAJOR_VERSION = "0.5"; # will get build number from svn revision
 
 # ----------------------------------------------
+DIR_INFO = {
+    # icons put under APP_ICON_SPLASH_DIR/<target>/icons/, like
+    # ./Res/360/icons/Icon-57.png, 
+    # ./Res/360/splash/Default-568h@2x~iphone, 
+    "res_dir": "/Res",
+    
+    # target build projects will be "/Target/<target>", like ./Target/ios, /Target/360, etc.
+    "target_dir": "/Target",
+    
+    # xcode provision files located here, by default
+    "ios_profile_dir": os.path.expanduser("~") +"/Library/MobileDevice/Provisioning Profiles"
+}
+
+# ----------------------------------------------
+# after build, script to copy the packages to remote host
+#
+# variables:
+# {unityproj_path}  -> /path/to/unity/project
+# {target}          -> ios/android/360/xiaomi/..., the key defined in TARGET_PACKAGES
+# {xxx}             -> any key/value defined in TARGET_PACKAGES, name/id/platform/bytes_dirname
+# {date}            -> YYYYmmdd
+# {version}         -> vn.n.build, like v1.0.2134
+# {package_ext}     -> ext name of package file, like .ipa, .apk, etc.
+# {package}         -> /path/to/target/{name}.{package_ext}
+#
+POST_BUILD_SCRIPTS = {
+    "enabled": True,
+    "debug": [
+        "ls -la {package}",
+        "scp {package} raymond@192.168.0.200:~/tmp/{name}-{target}-{version}{package_ext}",
+        
+        # --- package streaming assets to tgz ---
+        #"mkdir ./{bytes_dirname}",
+        #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
+        #"tar cfz {target_path}/bytes.tgz {bytes_dirname}",
+        #"rm -r ./{bytes_dirname}",
+        #"ls -la {target_path}/bytes.tgz",
+        #"scp {target_path}/bytes.tgz raymond@192.168.0.200:~/tmp/{name}-{target}-{version}.tgz",
+        
+        "ssh raymond@192.168.0.200 'ls -la ~/tmp'"
+    ],
+    "release": [
+        # if use ssh/scp without password, need setup user ssh pub key to <host>/~/.ssh/authorized_keys
+        # if you need copy to public folder, may need put ssh pub key to <host>:<root_home>/.ssh/authorized_keys
+        
+        # --- archive package ---
+        "ls -la {package}",
+        #"ssh root@192.168.0.200 'mkdir -p /home/public/版本归档/{date}'",
+        #"scp {package} root@192.168.0.200:/home/public/版本归档/{date}/{name}-{version}.{package_ext}",
+        #"scp {target_path}/bytes.tgz root@192.168.0.200:/home/public/版本归档/{date}/{target}-{version}.tgz"
+        #"ssh root@192.168.0.200 'chown -R nobody:nogroup /home/public/版本归档/{date}'",
+        
+        # --- package streaming assets to tgz ---
+        #"mkdir ./{bytes_dirname}",
+        #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
+        #"tar cfz {target_path}/bytes.tgz {bytes_dirname}",
+        #"rm -r ./{bytes_dirname}",
+        #"ls -la {target_path}/bytes.tgz",
+
+        # --- upload streaming assets tgz to update server ---
+        #"scp bytes.tgz root@us.rjfun.com:/var/www/html/bytes.tgz",
+        #"ssh root@us.rjfun.com 'cd /var/www/html; rm -r {bytes_dirname}; tar xvf bytes.tgz; chown -R nobody:nogroup {bytes_dirname};'",
+        
+    ]
+}
+
+# ----------------------------------------------
 # build package for every publish channels
 TARGET_PACKAGES = {
     "ios" : { # apple app store
@@ -68,28 +101,40 @@ TARGET_PACKAGES = {
         "platform": "ios",
         "name" : "LMDemo",
         "id" : "com.uniq.LMDemo",
-        "macro": "LM;AUTOBUILD"
+        "macro": "LM;AUTOBUILD",
+        "bytes_dirname": "iPhone" # see: /Assets/StreamingAssets/ and download URL
     },
     "android" : { # google play
         "enabled": True,
         "platform": "android",
         "name" : "LMDemo",
         "id" : "com.uniq.LMDemo",
-        "macro": "LM"
+        "macro": "LM",
+        "bytes_dirname": "Android",
     },
     "360" : { # qihu 360
         "enabled": False,
         "platform": "android",
         "name" : "LMDemo",
         "id" : "com.uniq.LMDemo.app360",
-        "macro" : "FOR_360"
+        "macro" : "FOR_360",
+        "bytes_dirname": "Android",
+        "post_build_cmds": {
+            "enabled": False
+            # override the default post build scripts
+        }
     },
     "xiaomi" : { # xiao mi
         "enabled": False,
         "platform": "android",
         "name" : "LMDemo",
         "id" : "com.uniq.LMDemo.mi",
-        "macro": "FOR_XIAOMI"
+        "macro": "FOR_XIAOMI",
+        "bytes_dirname": "Android",
+        "post_build_cmds": {
+            "enabled": False
+            # override the default post build scripts
+        }
     }
 }
 
