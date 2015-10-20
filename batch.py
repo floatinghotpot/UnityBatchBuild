@@ -15,7 +15,7 @@ from mod_pbxproj import XcodeProject
 # config data
 import batch_config
 
-buildPySyntax = "Syntax: batch.py [clean|build|archive] [ios|android|xiaomi|360|...|all] [--debug|--release]"
+buildPySyntax = "Syntax: ./batch.py [clean|build|archive] [ios|android|xiaomi|360|...|all] [--debug|--release]"
 
 # ----------------------------------------------
 def ModifyUnityMacro( projPath, target, buildMode, target_inf ):
@@ -268,7 +268,7 @@ def BuildPackage( projPath, target, buildMode, target_inf ):
     for key, value in target_inf.iteritems():
         print "    ", key, ": ", value
 
-    #CallUnity( projPath, target, buildMode, target_inf )
+    CallUnity( projPath, target, buildMode, target_inf )
 
     platform = target_inf['platform']
     if platform == "ios":
