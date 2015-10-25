@@ -15,24 +15,21 @@ from mod_pbxproj import XcodeProject
 # config data
 import batch_config
 
-buildPySyntax = "Syntax: ./batch.py [clean|build|archive] [ios|android|xiaomi|360|...|all] [--debug|--release]"
+buildPySyntax = ("\nSyntax: batch.py <action> <target> <mode>\n" + 
+                 "<action>     clean | build | archive\n" +
+                 "<target>     ios | android | amazon | 360 | ... | all\n" +
+                 "<mode>       --debug | --release | --daily | -d | -r\n" )
 
 # ----------------------------------------------
-def ModifyUnityMacro( projPath, target, buildMode, target_inf ):
+def ModifyUnityMacro( target_inf ):
+    vardict = target_inf['vars']
+    smcsPath = vardict['unity_smcs_path']
+    
     smcs = []
-
-    if 'common' in batch_config.UNITY_SMCS:
-        smcs.append( batch_config.UNITY_SMCS['common'] )
-
-    if buildMode in batch_config.UNITY_SMCS:
-        smcs.append( batch_config.UNITY_SMCS[ buildMode ] )
-
-    if 'smcs' in target_inf:
-        smcs.append( target_inf['smcs'] )
-
+    smcs.append( vardict['unity_smcs'] )
+    smcs.append( vardict['unity_mode_smcs'] )
     text = "\n".join(smcs)
 
-    smcsPath = projPath + "/Assets/smcs.rsp"
     print "\nModifying: " + smcsPath
     print "-----------------------------------------------------------------"
     print text
@@ -45,65 +42,33 @@ def ModifyUnityMacro( projPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def ModifyUnityCode( projPath, target, buildMode, target_inf ):
-    macro_text = "";
-    if "macro" in target_inf:
-        macro_text = target_inf['macro']
-
-    text = ("// NOTICE: build.py will auto overwrite it before every build\n" +
-        "public class BatchBuildConfig {\n" +
-        "   public static string APP_NAME = \"" + target_inf['name'] + "\";\n" +
-        "   public static string APP_ID = \"" + target_inf['id'] + "\";\n" +
-        "   public static string APP_VERSION = \"" + target_inf['version'] + "\";\n" +
-        "   public static string TARGET_DIR = \"" + batch_config.DIR_INFO['target_dir'] + "\";\n" +
-        "   public static string DEFINE_MACRO = \"" + macro_text + "\";\n" +
-        "}")
-
-    global BatchBuildConfig_cs_abspath
-    print "\nModifying: " + BatchBuildConfig_cs_abspath
-    print "-----------------------------------------------------------------"
-    print text
-    print "-----------------------------------------------------------------"
-
-    f = open( BatchBuildConfig_cs_abspath, "w" )
-    f.write( text + "\n" )
-    f.close()
-
+def ModifyUnityCode( target_inf ):
+    vardict = target_inf['vars']
+    
+    for file_tmp in batch_config.SOURCE_FILES:
+        filepath = expandTemplateText( file_tmp['filepath'], vardict )
+        text = expandTemplateText( file_tmp['content'], vardict )
+        print "\nOverwrite source file: " + filepath
+        print "-----------------------------------------------------------------"
+        print text
+        print "-----------------------------------------------------------------"
+        f = open( filepath, "w" )
+        f.write( text )
+        f.close()
+        
     return
 
 # ----------------------------------------------
-def CallUnity( projPath, target, buildMode, target_inf ):
+def CallUnity( target_inf ):
     print "-----------------------------------------------------------------"
     print "------------------ Run Unity Begin ------------------------------"
     print "-----------------------------------------------------------------"
 
-    ModifyUnityMacro( projPath, target, buildMode, target_inf )
+    ModifyUnityMacro( target_inf )
 
-    ModifyUnityCode( projPath, target, buildMode, target_inf )
+    ModifyUnityCode( target_inf )
 
-    # the called buildMethod are defined in BatchBuildMenu.cs
-    platform = target_inf['platform']
-    if platform == "ios":
-        buildMethod="BatchBuildMenu.BuildIOS"
-    elif platform == "android":
-        buildMethod="BatchBuildMenu.BuildAndroid"
-    elif platform == "wp8":
-        buildMethod="BatchBuildMenu.BuildWP8"
-    else:
-        print "platform not supported: " + platform
-        exit(0)
-
-    unityPath = os.getenv("UNITY_PATH")
-    if unityPath is None:
-        unityPath = "/Applications/Unity/Unity.app"
-
-    unityCmd = unityPath + "/Contents/MacOS/Unity -batchmode -quit"
-    unityCmd = unityCmd + " -projectPath " + projPath + " -executeMethod " + buildMethod
-    unityCmd = unityCmd + " -logFile"
-
-    if buildMode == "debug":
-        unityCmd = unityCmd + " -NoStrip -Development"
-
+    unityCmd = target_inf['vars']['unity_cmd']
     print "\nRunning command: " + unityCmd
     print "-----------------------------------------------------------------"
     ret = os.system( unityCmd )
@@ -118,12 +83,13 @@ def CallUnity( projPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def ModifyXcodeProject( xcodeprojPath, target, buildMode, target_inf ):
-    filePath = xcodeprojPath + "/Unity-iPhone.xcodeproj/project.pbxproj"
-    print "\nModifying " + filePath
-    project = XcodeProject.Load( filePath )
+def ModifyXcodeProject( target_inf ):
+    vardict = target_inf['vars']
+    filepath = vardict['xcode_pbxproj_path']
+    print "\nModifying " + filepath
+    project = XcodeProject.Load( filepath )
 
-    batch_config.ModifyXcodeProject( project, buildMode )
+    batch_config.ModifyXcodeProject( project, vardict['build_mode'] )
 
     if project.modified:
         project.backup()
@@ -136,20 +102,21 @@ def ModifyXcodeProject( xcodeprojPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def ModifyPlist( xcodeprojPath, target, buildMode, target_inf ):
-    filePath = xcodeprojPath + "/Info.plist";
+def ModifyPlist( target_inf ):
+    vardict = target_inf['vars']
+    filePath = vardict['xcodeplist_path']
     print "\nModifying " + filePath
 
     plist = NSMutableDictionary.dictionaryWithContentsOfFile_( filePath )
 
-    plist['CFBundleDisplayName'] = target_inf['name']
-    plist['CFBundleIdentifier'] = target_inf['id']
-    plist['CFBundleVersion'] = target_inf['version']
-    plist['CFBundleShortVersionString'] = batch_config.APP_MAJOR_VERSION
+    plist['CFBundleDisplayName'] = vardict['name']
+    plist['CFBundleIdentifier'] = vardict['id']
+    plist['CFBundleVersion'] = vardict['version']
+    plist['CFBundleShortVersionString'] = vardict['major_version']
 
     plist['UIViewControllerBasedStatusBarAppearance'] = False
 
-    batch_config.ModifyPlist( plist, buildMode )
+    batch_config.ModifyPlist( plist, vardict['build_mode'] )
 
     # save plist file
     plist.writeToFile_atomically_( filePath, 1 )
@@ -161,82 +128,34 @@ def ModifyPlist( xcodeprojPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def ModifyResource( projPath, target, buildMode, target_inf ):
-    # icons & splash located here
-    iconPathSrc = projPath + batch_config.DIR_INFO['res_dir'] + "/" + target + "/icons"
-    splashPathSrc = projPath + batch_config.DIR_INFO['res_dir'] + "/" + target + "/splash"
-
-    xcodeprojPath = projPath + batch_config.DIR_INFO['target_dir'] + "/" + target
-    resPath = xcodeprojPath + "/Res"
-
-    iconPath = resPath + "/icons"
-    copyCmd = "cp " + iconPathSrc + "/*.png " + iconPath + "/";
-    print "\nCopy Icons: " + copyCmd
-    if os.path.exists(iconPathSrc):
-        os.mkdirs(iconPath)
-        os.system( copyCmd )
-
-    splashPath = resPath + "/splash"
-    copyCmd = "cp " + splashPathSrc + "/*.png " + splashPath + "/";
-    print "\nCopy Splash Images: " + copyCmd
-    if os.path.exists(iconPathSrc):
-        os.mkdirs(splashPath)
-        os.system( copyCmd )
-
-    # TODO: modify icons & splash entry in Plist
+def ModifyResource( target_inf ):
+    
+    # TODO: copy icons & splash
 
     return
 
 # ----------------------------------------------
-def CallXcodeBuild( projPath, target, buildMode, target_inf ):
+def CallXcodeBuild( target_inf ):
     print "-----------------------------------------------------------------"
     print "------------------ Run Xcode Begin ------------------------------"
     print "-----------------------------------------------------------------"
 
-    target_inf = batch_config.TARGET_PACKAGES[ target ]
-    xcodeprojPath = projPath + batch_config.DIR_INFO['target_dir'] + "/" + target
+    ModifyXcodeProject( target_inf )
 
-    ModifyXcodeProject( xcodeprojPath, target, buildMode, target_inf )
+    ModifyPlist( target_inf )
 
-    ModifyPlist( xcodeprojPath, target, buildMode, target_inf )
+    ModifyResource( target_inf )
 
-    ModifyResource( xcodeprojPath, target, buildMode, target_inf )
-
-    provision_cert = batch_config.IOS_PROVISION_CERT[ buildMode ]
-    xcodeCmd = ("/usr/bin/xcodebuild" +
-        " clean " +
-        " build " +
-        " -project " + xcodeprojPath + "/Unity-iPhone.xcodeproj" +
-        " PROVISIONING_PROFILE=\"" + provision_cert['provision'] + "\" " +
-        " CODE_SIGN_IDENTITY=\"" + provision_cert['cert'] +"\" " +
-        #" analyze " +
-        #" archive " +
-        #" -list " +
-        #" -target Unity-iPhone " +
-        #" -scheme Unity-iPhone " +
-        #" -xcconfig configuration.xcconfig " +
-        #" SYMROOT=\"" + symroot + "\" " +
-        #" DSTROOT=\"" + dstroom + "\" " +
-        "")
-
-    if buildMode == "debug":
-        xcodeCmd = xcodeCmd + " -configuration Debug"
-    else:
-        xcodeCmd = xcodeCmd + " -configuration Release"
-
+    vardict = target_inf['vars']
+    xcodeCmd = vardict['xcode_cmd']
     print "\nRunning command: " + xcodeCmd
     if os.system(xcodeCmd) != 0:
         exit(0)
 
-    appFile = target_inf['name'] + ".app"
-    outputApp = xcodeprojPath + "/build/" + appFile
-    outputDebugApp = xcodeprojPath + "/build/Debug-iphoneos/" + appFile
-    outputReleaseApp = xcodeprojPath + "/build/Release-iphoneos/" + appFile
-    if (buildMode == "debug") and os.path.exists(outputDebugApp):
-        outputApp = outputDebugApp
-    elif (buildMode == "release") and os.path.exists(outputReleaseApp):
-        outputApp = outputReleaseApp
-
+    outApp = vardict['xcode_outapptry']
+    if not os.path.exists(outApp):
+        outApp = vardict['xcode_outapp']
+        
     #provisionfile = batch_config.DIR_INFO['ios_profile_dir'] + "/" + provision_cert['provision'] + ".mobileprovision"
     #targetProvision = outputApp + "/embedded.mobileprovision"
     #tmpIpa = xcodeprojPath + "/tmp.ipa"
@@ -244,12 +163,7 @@ def CallXcodeBuild( projPath, target, buildMode, target_inf ):
     #cpCmd = "cp \"" + provisionfile + "\" " + targetProvision
     #codesignCmd = "codesign -f -s \"" + provision_cert['cert'] + "\" " + outputApp
 
-    # TODO: we can also replace the app icon & spash here
-
-    archiveIpa = xcodeprojPath + "/" + target_inf['name'] + '.ipa'
-    makeIpaCmd = "xcrun -sdk iphoneos PackageApplication -v " + outputApp + " -o " + archiveIpa
-
-    #Cmds = [ rmCmd, cpCmd, codesignCmd, makeIpaCmd ]
+    makeIpaCmd = "xcrun -sdk iphoneos PackageApplication -v " + outApp + " -o " + vardict['xcode_outipa']
     Cmds = [ makeIpaCmd ]
     for Cmd in Cmds:
         print "\nRunning command: " + Cmd
@@ -263,16 +177,14 @@ def CallXcodeBuild( projPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def BuildPackage( projPath, target, buildMode, target_inf ):
-    print "\nBuilding package target: "
-    for key, value in target_inf.iteritems():
-        print "    ", key, ": ", value
+def BuildPackage( target_inf ):
+    CallUnity( target_inf )
 
-    CallUnity( projPath, target, buildMode, target_inf )
-
-    platform = target_inf['platform']
+    vardict = target_inf['vars']
+    platform = vardict['platform']
     if platform == "ios":
-        CallXcodeBuild( projPath, target, buildMode, target_inf )
+        CallXcodeBuild( target_inf )
+        pass
     elif platform == "android":
         pass
     elif platform == "wp8":
@@ -281,50 +193,9 @@ def BuildPackage( projPath, target, buildMode, target_inf ):
     return
 
 # ----------------------------------------------
-def ArchivePackage( projPath, target, buildMode, target_inf ):
-    packagePath = target_inf['package']
-    print "\nPackage: ", packagePath
-    print "    version: ", target_inf['version']
-    print "    size: ", int(os.path.getsize(packagePath)/1024/1024), "MB"
-
-    # if not defined in target info, then use default
-    if "post_build_cmds" in target_inf:
-        print "post_build_cmds found for target " + target
-        post_build_cmds = target_inf['post_build_cmds']
-    else:
-        print "using default post_build_cmds"
-        post_build_cmds = batch_config.POST_BUILD_SCRIPTS
-
-    # if not dict, or not enabled, ignore
-    if type(post_build_cmds) is dict:
-        if ('enabled' in post_build_cmds) and (post_build_cmds['enabled'] == False):
-            print "post_build_cmds not enabled, skip."
-            return
-    else:
-        print "post_build_cmds not configured, skip."
-        return
-
-    # make sure command list defined for current build mode
-    if buildMode in post_build_cmds:
-        template_cmds = post_build_cmds[ buildMode ]
-        if not type(template_cmds) is list:
-            print "template commands list expected."
-            return
-    else:
-        print "post_build_cmds for " + buildMode + " not configured, skip."
-        return
-
-    # create commands from template
-    cmds = []
-    for template_cmd in template_cmds:
-        cmd = template_cmd
-        for key, value in target_inf.iteritems():
-            if type(key) is str and type(value) is str:
-                cmd = cmd.replace("{"+key+"}", value)
-        cmds.append( cmd )
-
-    # run commands
+def ArchivePackage( target_inf ):
     print "Running batch commands:"
+    cmds = target_inf['post_build_cmds']
     for cmd in cmds:
         print "    " + cmd
         status, output = commands.getstatusoutput( cmd )
@@ -339,44 +210,18 @@ def addTargetToList(target, targets):
     if target in targets:
         return
 
-    target_inf = batch_config.TARGET_PACKAGES[ target ]
-    if type(target_inf) is dict:
-        targets.append( target )
-    else:
-        print "Error: " + arg + " not configured in TARGET_PACKAGES\n"
-        exit(0)
+    if target in batch_config.TARGET_PACKAGES:
+        target_inf = batch_config.TARGET_PACKAGES[ target ]
+        if type(target_inf) is dict:
+            targets.append( target )
+            return
+        
+    print "Error: " + arg + " not configured in TARGET_PACKAGES\n"
+    exit(0)
 
     return
 
-# ----------------------------------------------
-def main( argv ) :
-    # ----------------------------------------------
-    # check project path
-    global buildPyPath
-    buildPyPath = os.path.abspath(argv[0])
-    buildPyFile = os.path.basename(buildPyPath)
-    n = buildPyPath.find("/Assets/")
-    if n > 0:
-        projPath = buildPyPath[0:n]
-        print "Project to build: " + projPath
-    else:
-        print buildPyFile + " not under Unity project Assets, abort."
-        exit(0)
-
-    # ----------------------------------------------
-    # make sure BatchBuildConfig_cs comes together
-    global BatchBuildConfig_cs_abspath
-    BatchBuildConfig_cs_abspath = buildPyPath.replace(buildPyFile, "BatchBuildConfig.cs");
-    if (os.path.basename(BatchBuildConfig_cs_abspath) != "BatchBuildConfig.cs") or (not os.path.exists( BatchBuildConfig_cs_abspath) ):
-        print "BatchBuildConfig.cs not found with " + buildPyFile;
-        exit(0)
-
-    do_clean = False
-    do_build = False
-    do_archive = False
-    buildMode = "debug"
-    buildNumber = 0
-
+def getSvnRevision():
     # ----------------------------------------------
     # get build number from SVN
     svn_info = subprocess.Popen(['svn info'], shell=True, stdout=subprocess.PIPE).communicate()[0]
@@ -386,22 +231,128 @@ def main( argv ) :
         print "    SVN revision -> build number: ", buildNumber
     else:
         buildNumber = 0
-        print "    Not SVN, build number: ", 0
+        print "    Warning: Not SVN, build number: ", 0
+    return buildNumber
+
+# ----------------------------------------------
+def printDict( vardict ):
+    keys = vardict.keys()
+    keys.sort()
+    for i in keys:
+        print '    ', i, '=', vardict[i]
+    return
+
+# ----------------------------------------------
+def printList( cmds ):
+    for cmd in cmds:
+        print "    ", cmd
+    return
+
+# ----------------------------------------------
+def expandTemplateVarDict(vartmp):
+    vardict = vartmp.copy()
+    keys = vardict.keys()
+    for i in keys:
+        v = vardict[ i ]
+        for j in keys:
+            v = v.replace( "{" + j + "}", vardict[j] )
+        vardict[ i ] = v
+
+    return vardict
+
+# ----------------------------------------------
+def expandTemplateText(template, vardict):
+    text = template;
+    for k, v in vardict.iteritems():
+        text = text.replace("{"+ k +"}", v)
+    return text
+
+# ----------------------------------------------
+def prepareTargetInfo( target, buildMode, target_inf ):
+    tmp = {};
+    tmp.update( batch_config.COMMON_VARS )
+    tmp.update( batch_config.BUILDMODE_VARS[ buildMode ] )
+    tmp.update( batch_config.AUTO_VARS )
+    tmp.update( target_inf[ "vars" ] )
+
+    tmp['target'] = target
+    tmp['build_mode'] = buildMode
+
+    platform = tmp['platform']
+    if platform == 'android':
+        tmp['package_ext'] = '.apk'
+    elif platform == 'wp8':
+        tmp['package_ext'] = '.exe'
+    elif platform == 'ios':
+        tmp['package_ext'] = '.ipa'
+    else:
+        print "platform not supported: " + platform
+        exit(0)
+
+    vardict = expandTemplateVarDict( expandTemplateVarDict(tmp) )
+    target_inf['vars'] = vardict
+
+    pre_cmds = []
+    tmp_cmds = target_inf['pre_build_cmds']
+    for tmp_cmd in tmp_cmds:
+        pre_cmds.append( expandTemplateText(tmp_cmd, vardict) )
+    target_inf['pre_build_cmds'] = pre_cmds
+    
+    post_cmds = []
+    tmp_cmds = target_inf['post_build_cmds']
+    for tmp_cmd in tmp_cmds:
+        post_cmds.append( expandTemplateText(tmp_cmd, vardict) )
+    target_inf['post_build_cmds'] = post_cmds
+    
+    print "---------------------------------------------------------------"
+    printDict( vardict )
+    print "---------------------------------------------------------------"
+    printList( pre_cmds )
+    print "---------------------------------------------------------------"
+    printList( post_cmds )
+    print "---------------------------------------------------------------"
+    return
+    
+# ----------------------------------------------
+def main( argv ) :
+    # ----------------------------------------------
+    batchPyDirPath = os.path.dirname(os.path.realpath(__file__))
+    batchPyFile = os.path.basename(__file__)
+    n = batchPyDirPath.find("/Assets/")
+    if n > 0:
+        projPath = batchPyDirPath[0:n]
+    else:
+        print buildPyFile + " not under Unity project Assets, abort."
+        exit(0)
+
+    batch_config.AUTO_VARS['batchpydir_path'] = batchPyDirPath
+    batch_config.AUTO_VARS['unityprojdir_path'] = projPath
+    batch_config.AUTO_VARS['date'] = datetime.datetime.today().strftime('%Y%m%d')
+    batch_config.AUTO_VARS['svn_revision'] = str(getSvnRevision())
+
+    do_clean = False
+    do_build = False
+    do_archive = False
+    buildMode = "debug"
 
     # ----------------------------------------------
     # parse args to get targets & build mode
     targets = []
     for arg in argv[1:]:
-        if arg == "clean" or arg == "-c":
+        if arg == "clean":
             do_clean = True
-        elif arg == "build" or arg == "-b":
+        elif arg == "build":
             do_build = True
-        elif arg == "archive" or arg == "-a":
+        elif arg == "archive":
             do_archive = True
-        elif arg == "release" or arg == '-r':
+            
+        elif arg == "--release" or arg == '-r':
             buildMode="release"
-        elif arg == "debug" or arg == '-d':
+        elif arg == "--debug" or arg == '-d':
             buildMode="debug"
+        elif arg == "--daily":
+            buildMode="daily"
+        
         elif arg == "all":
             for key, target_inf in batch_config.TARGET_PACKAGES.iteritems():
                 enabled = target_inf['enabled']
@@ -421,27 +372,8 @@ def main( argv ) :
     # --- prepare target info ---
     for target in targets:
         target_inf = batch_config.TARGET_PACKAGES[ target ]
-
-        target_inf['target'] = target
-        target_inf['unityproj_path'] = projPath
-        target_inf['target_path'] = projPath + batch_config.DIR_INFO['target_dir'] + "/" + target
-
-        platform = target_inf['platform']
-        if platform == "ios":
-            target_inf['package'] = target_inf['target_path'] + "/" + target_inf['name'] + ".ipa"
-        elif platform == "android":
-            target_inf['package'] = target_inf['target_path'] + "/" + target_inf['name'] + ".apk"
-        elif platform == "wp8":
-            target_inf['package'] = target_inf['target_path'] + "/" + target_inf['name'] + ".exe"
-        else:
-            print "platform not supported: " + platform
-            exit(0)
-
-        filename, file_extension = os.path.splitext( target_inf['package'] )
-        target_inf['package_ext'] = file_extension
-        target_inf['version'] = "v" + batch_config.APP_MAJOR_VERSION + "." + str(buildNumber)
-        target_inf['date'] = datetime.datetime.today().strftime('%Y%m%d')
-
+        prepareTargetInfo( target, buildMode, target_inf )
+        
     # ----------------------------------------------
     # build targets one by one
     if len(targets) > 0:
@@ -451,21 +383,22 @@ def main( argv ) :
     if do_clean:
         for target in targets:
             target_inf = batch_config.TARGET_PACKAGES[ target ]
-            targetDirPath = target_inf['target_path']
+            targetDirPath = target_inf['vars']['target_path']
             cleanCmd = "rm -r " + targetDirPath
             print "    " + cleanCmd
             if os.path.exists(targetDirPath):
                 os.system( cleanCmd )
+                pass
 
     if do_build:
         for target in targets:
             target_inf = batch_config.TARGET_PACKAGES[ target ]
-            BuildPackage( projPath, target, buildMode, target_inf )
+            BuildPackage( target_inf )
 
     if do_archive:
         for target in targets:
             target_inf = batch_config.TARGET_PACKAGES[ target ]
-            ArchivePackage( projPath, target, buildMode, target_inf )
+            ArchivePackage( target_inf )
 
     print "---------------------------------------------------------------"
     print "----------------------- Done ----------------------------------"

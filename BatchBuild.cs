@@ -21,24 +21,20 @@ public class BatchBuild : MonoBehaviour {
 
 	public static void Build(string appName, string packageId, string version, BuildTarget target, BuildOptions options) {
 		string ProjPath = Application.dataPath.Replace("/Assets", "");
-		string targetPath = ProjPath + BatchBuildConfig.TARGET_DIR;
+		string target_dir = ProjPath + BatchBuildConfig.TARGET_DIR;
 
-		string target_dir = null;
 		string locationPath = null;
 		BuildTargetGroup targetGroup = BuildTargetGroup.Unknown;
 
 		if (target == BuildTarget.Android) {
-			target_dir = targetPath + "/android";
 			locationPath = target_dir + "/" + appName + ".apk";
 			targetGroup = BuildTargetGroup.Android;
 
 		} else if (target == BatchBuild.BuildTarget_iOS) {
-			target_dir = targetPath + "/ios";
 			locationPath = target_dir;
 			targetGroup = BatchBuild.BuildTargetGroup_iOS;
 
 		} else if (target == BuildTarget.WP8Player) {
-			target_dir = targetPath + "/wp8";
 			locationPath = target_dir;
 			targetGroup = BuildTargetGroup.WP8;
 
@@ -55,10 +51,6 @@ public class BatchBuild : MonoBehaviour {
 		
 		// Clean previous build
 		try {
-			if(! Directory.Exists(targetPath)) {
-				Directory.CreateDirectory(targetPath);
-			}
-			
 			if (Directory.Exists(target_dir)) {
 				Directory.Delete(target_dir, true);
 			}

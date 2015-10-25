@@ -3,139 +3,252 @@
 
 import os
 
-UNITY_SMCS = {
-    "common": "-unsafe\n-define:LMGAME;",
-    "debug":"-define:DEV_VERSION;EnableChinese;", 
-    "release":"-define:DISTRIBUTION_VERSION;EnableChinese;CODESTRIPPER;"
-}
-
-# ----------------------------------------------
-IOS_PROVISION_CERT = {
-    "debug": {
-        "id": "com.uniq.LMDemo", 
-        "provision": "08cb9450-c4b4-4a56-8123-8cf1b46d7e56",
-        "cert": "iPhone Developer: Liming Xie (B3YVNBCEFU)"
-    },
-    "release": {
-        "id": "com.uniq.LMDemo", 
-        "provision": "aedff668-2431-4f2d-9199-c87c5a25be91",
-        "cert": "iPhone Distribution: Liming Xie (D92BDUZHUG)"
-    }
-}
-
-# ----------------------------------------------
-APP_MAJOR_VERSION = "0.5"; # will get build number from svn revision
-
-# ----------------------------------------------
-DIR_INFO = {
-    # icons put under APP_ICON_SPLASH_DIR/<target>/icons/, like
-    # ./Res/360/icons/Icon-57.png, 
-    # ./Res/360/splash/Default-568h@2x~iphone, 
-    "res_dir": "/Res",
-    
-    # target build projects will be "/Target/<target>", like ./Target/ios, /Target/360, etc.
-    "target_dir": "/Target",
-    
-    # xcode provision files located here, by default
-    "ios_profile_dir": os.path.expanduser("~") +"/Library/MobileDevice/Provisioning Profiles"
-}
-
-# ----------------------------------------------
-# after build, script to copy the packages to remote host
-#
 # variables:
+# {xxx}             -> any key/value defined in TARGET_PACKAGES, name/id/platform/bytes_dirname
+#
+# for example:
 # {unityproj_path}  -> /path/to/unity/project
 # {target}          -> ios/android/360/xiaomi/..., the key defined in TARGET_PACKAGES
-# {xxx}             -> any key/value defined in TARGET_PACKAGES, name/id/platform/bytes_dirname
 # {date}            -> YYYYmmdd
 # {version}         -> vn.n.build, like v1.0.2134
 # {package_ext}     -> ext name of package file, like .ipa, .apk, etc.
 # {package}         -> /path/to/target/{name}.{package_ext}
 #
-POST_BUILD_SCRIPTS = {
-    "enabled": True,
-    "debug": [
-        "ls -la {package}",
-        "scp {package} liming@localhost:~/tmp/{name}-{target}-{version}{package_ext}",
-        
-        # --- package streaming assets to tgz ---
-        "mkdir ./{bytes_dirname}",
-        #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
-        "tar cfz {target_path}/bytes.tgz {bytes_dirname}",
-        "rm -r ./{bytes_dirname}",
-        "ls -la {target_path}/bytes.tgz",
-        "scp {target_path}/bytes.tgz liming@localhost:~/tmp/{name}-{target}-{version}.tgz",
-        
-        "ssh liming@localhost 'ls -la ~/tmp'"
-    ],
-    "release": [
-        # if use ssh/scp without password, need setup user ssh pub key to <host>/~/.ssh/authorized_keys
-        # if you need copy to public folder, may need put ssh pub key to <host>:<root_home>/.ssh/authorized_keys
-        
-        # --- archive package ---
-        "ls -la {package}",
-        #"ssh root@192.168.0.200 'mkdir -p /home/public/版本归档/{date}'",
-        #"scp {package} root@192.168.0.200:/home/public/版本归档/{date}/{name}-{version}.{package_ext}",
-        #"scp {target_path}/bytes.tgz root@192.168.0.200:/home/public/版本归档/{date}/{target}-{version}.tgz"
-        #"ssh root@192.168.0.200 'chown -R nobody:nogroup /home/public/版本归档/{date}'",
-        
-        # --- package streaming assets to tgz ---
-        #"mkdir ./{bytes_dirname}",
-        #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
-        #"tar cfz {target_path}/bytes.tgz {bytes_dirname}",
-        #"rm -r ./{bytes_dirname}",
-        #"ls -la {target_path}/bytes.tgz",
 
-        # --- upload streaming assets tgz to update server ---
-        #"scp bytes.tgz root@us.rjfun.com:/var/www/html/bytes.tgz",
-        #"ssh root@us.rjfun.com 'cd /var/www/html; rm -r {bytes_dirname}; tar xvf bytes.tgz; chown -R nobody:nogroup {bytes_dirname};'",
-        
-    ]
+# ----------------------------------------------
+COMMON_VARS = {
+    "name": "PokerKing",
+    "id": "com.rjfun.pokerking",
+    "major_version": "0.5",
+    "unity_smcs": "-define:MYGAME;EnableChinese;",
+    
+    # overwrite by target config
+    "target" : "ios",
+    "platform": "ios",
+    "macro": "LM"
 }
+
+# ----------------------------------------------
+BUILDMODE_VARS = {
+    "debug": {
+        "ios_cert": "iPhone Developer: Liming Xie (B3YVNBCEFU)",
+        "provision_uuid": "08cb9450-c4b4-4a56-8123-8cf1b46d7e56",
+        
+        "unity_mode_smcs": "-define:DEV_VERSION;", 
+        "unity_cmdflag": "-NoStrip -Development",
+        
+        "xcode_cmdflag": "-configuration Debug",
+        "xcode_outapp": "{xcodeprojdir_path}/build/Debug-iphoneos/{name}.app",
+    },
+    "release": {
+        "ios_cert": "iPhone Distribution: Liming Xie (D92BDUZHUG)",
+        "provision_uuid": "aedff668-2431-4f2d-9199-c87c5a25be91",
+        
+        "unity_mode_smcs": "-define:DIST_VERSION;CODESTRIPPER;",
+        "unity_cmdflag": "",
+        
+        "xcode_cmdflag": "-configuration Release",
+        "xcode_outapp": "{xcodeprojdir_path}/build/Release-iphoneos/{name}.app",
+    },
+}
+
+BUILDMODE_VARS["daily"] = BUILDMODE_VARS["release"];
+
+# ----------------------------------------------
+EXTRA_VARS_DEBUG = {
+    # for cmds
+    "archive_host": "localhost",
+    "archive_user": "liming",
+    "archive_dir": "~/tmp",
+    "archive_usergroup": "liming:staff",
+
+    "assets_host": "localhost",
+    "assets_user": "liming",
+    "assets_dir": "~/public_html",
+    "assets_usergroup": "liming:staff",
+
+    # for source code
+    "gameserver_host": "192.168.0.200",
+    "gameserver_port": "22322",
+    "asset_download_url": "http://{assets_host}/~{assets_user}",
+}
+
+EXTRA_VARS_DAILY = {
+    # for cmds
+    "archive_host": "192.168.0.200",
+    "archive_user": "root",
+    "archive_dir": "/home/public/版本归档/{date}",
+    "archive_usergroup": "nobody:nogroup",
+
+    "assets_host": "192.168.0.200",
+    "assets_user": "root",
+    "assets_dir": "/var/www/html",
+    "assets_usergroup": "nobody:nogroup",
+
+    # for source code
+    "gameserver_host": "192.168.0.200",
+    "gameserver_port": "22322",
+    "asset_download_url": "http://{assets_host}",
+}
+
+EXTRA_VARS_RELEASE = {
+    # extra vars for cmds or sources
+    "archive_host": "192.168.0.200",
+    "archive_user": "root",
+    "archive_dir": "/home/public/版本归档/{date}",
+    "archive_usergroup": "nobody:nogroup",
+
+    "assets_host": "120.24.242.150",
+    "assets_user": "root",
+    "assets_dir": "/var/www/html",
+    "assets_usergroup": "nobody:nogroup",
+
+    # for source code
+    "gameserver_host": "120.24.242.150",
+    "gameserver_port": "22322",
+    "asset_download_url": "http://{assets_host}",
+}
+
+BUILDMODE_VARS['debug'].update(EXTRA_VARS_DEBUG)
+BUILDMODE_VARS['daily'].update(EXTRA_VARS_DAILY)
+BUILDMODE_VARS['release'].update(EXTRA_VARS_RELEASE)
+
+# ----------------------------------------------
+AUTO_VARS = {
+    # auto detect
+    "unityprojdir_path" : "",
+    "batchpydir_path" : "",
+    "svn_revision" : "0",
+    "date" : "20150101",
+    
+    "package_ext": ".ipa",
+    
+    # auto expand
+    "res_dir": "/Res/{target}",
+    "target_dir" : "/Target/{target}",
+    "target_path" : "{unityprojdir_path}{target_dir}",
+    "version": "{major_version}.{svn_revision}",
+    "package": "{target_path}/{name}{package_ext}",
+    "archive_name": "{name}-{target}-{version}{package_ext}",
+    
+    "unity_smcs_path": "{unityprojdir_path}/Assets/smcs.rsp",
+    "unity_buildmethod": "BatchBuildMenu.BuildConfig",
+    "unity_cmd": "/Applications/Unity/Unity.app/Contents/MacOS/Unity -projectPath {unityprojdir_path} -executeMethod {unity_buildmethod} {unity_cmdflag} -batchmode -quit -logFile",
+    
+    "xcodeprojdir_path": "{target_path}",
+    "xcodeplist_path": "{target_path}/Info.plist",
+    "xcode_pbxproj_path": "{xcodeprojdir_path}/Unity-iPhone.xcodeproj/project.pbxproj",
+    "xcode_cmd": "/usr/bin/xcodebuild clean build -project {xcodeprojdir_path}/Unity-iPhone.xcodeproj PROVISIONING_PROFILE=\"{provision_uuid}\" CODE_SIGN_IDENTITY=\"{ios_cert}\" {xcode_cmdflag}",
+    "xcode_outapptry": "{xcodeprojdir_path}/build/{name}.app",
+    "xcode_outipa": "{xcodeprojdir_path}/{name}.ipa",
+    "xcode_makeipacmd": "/usr/bin/xcrun -sdk iphoneos PackageApplication -v {xcode_outapp} -o {xcode_outipa}",
+}
+
+# ----------------------------------------------
+SOURCE_FILES = [
+    {
+    "filepath": "{batchpydir_path}/BatchBuildConfig.cs",
+    "content": (
+        "// NOTICE: Auto overwritten with batch.py. Do not edit !!!\n" +
+        "public class BatchBuildConfig {\n" +
+        "   public static string APP_NAME = \"{name}\";\n" +
+        "   public static string APP_ID = \"{id}\";\n" +
+        "   public static string APP_VERSION = \"{version}\";\n" +
+        "   public static string PLATFORM = \"{platform}\";\n" +
+        "   public static string TARGET_DIR = \"{target_dir}\";\n" +
+        "   public static string DEFINE_MACRO = \"{macro}\";\n" +
+        "   public static string DIST_CHANNEL = \"{channel}\";\n" +
+        "}"),
+    }
+]
+
+# ----------------------------------------------
+# after build, script to copy the packages to remote host
+#
+# if use ssh/scp without password, need setup user ssh pub key to <host>/~/.ssh/authorized_keys
+# if you need copy to public folder, may need put ssh pub key to <host>:<root_home>/.ssh/authorized_keys
+
+PACK_ASSETS_CMDS = [
+    # --- package streaming assets to tgz ---
+    "mkdir ./{bytes_dirname}",
+    #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
+    "tar cfz {target_path}/bytes.tgz {bytes_dirname}",
+    "rm -r ./{bytes_dirname}",
+    "ls -la {target_path}/bytes.tgz",
+]
+
+ARCHIVE_CMDS = [
+    "ls -la {package}",
+    "ssh {archive_user}@{archive_host} 'mkdir -p {archive_dir}'",
+    "scp {package} {archive_user}@{archive_host}:{archive_dir}/{name}-{target}-{version}{package_ext}",
+    "scp {target_path}/bytes.tgz {archive_user}@{archive_host}:{archive_dir}/{name}-{target}-{version}.tgz",
+    "ssh {archive_user}@{archive_host} 'chown -R {archive_usergroup} {archive_dir}; ls -la {archive_dir}'",
+]
+
+DEPLOY_ASSETS_CMDS = [
+    "scp bytes.tgz {assets_user}@{assets_host}:{assets_dir}/bytes.tgz",
+    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -r {bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname};'",
+]
+
+POST_BUILD_CMDS = PACK_ASSETS_CMDS + ARCHIVE_CMDS + DEPLOY_ASSETS_CMDS
 
 # ----------------------------------------------
 # build package for every publish channels
 TARGET_PACKAGES = {
     "ios" : { # apple app store
         "enabled": True,
-        "platform": "ios",
-        "name" : "LMDemo",
-        "id" : "com.uniq.LMDemo",
-        "macro": "LM;AUTOBUILD",
-        "bytes_dirname": "iPhone" # see: /Assets/StreamingAssets/ and download URL
+        "vars": {
+            "platform": "ios",
+            "macro": "FOR_IOS",
+            "bytes_dirname": "iPhone",
+            "channel": "appstore",
+        },
+        "pre_build_cmds": [],
+        "post_build_cmds": POST_BUILD_CMDS + [
+            "echo 'do something else for {target}'"
+        ]
     },
     "android" : { # google play
         "enabled": True,
-        "platform": "android",
-        "name" : "LMDemo",
-        "id" : "com.uniq.LMDemo",
-        "macro": "LM",
-        "bytes_dirname": "Android",
+        "vars": {
+            "platform": "android",
+            "macro": "FOR_ANDROID",
+            "bytes_dirname": "Android",
+            "channel": "googleplay",
+        },
+        "pre_build_cmds": [],
+        "post_build_cmds": POST_BUILD_CMDS + [
+            "echo 'do something else for {target}'"
+        ]
+    },
+    "amazon" : { # amazon
+        "enabled": False,
+        "vars": {
+            "id" : "com.rjfun.pokerking.amazon",
+            "platform": "android",
+            "macro": "FOR_AMAZON",
+            "bytes_dirname": "Android",
+            "channel": "amazon_appstore",
+        },
+        "pre_build_cmds": [],
+        "post_build_cmds": [
+            "echo 'do nothing for {target}'"
+        ]
     },
     "360" : { # qihu 360
         "enabled": False,
-        "platform": "android",
-        "name" : "LMDemo",
-        "id" : "com.uniq.LMDemo.app360",
-        "macro" : "FOR_360",
-        "bytes_dirname": "Android",
-        "post_build_cmds": {
-            "enabled": False
-            # override the default post build scripts
-        }
+        "vars": {
+            "id" : "com.rjfun.pokerking.app360",
+            "platform": "android",
+            "macro": "FOR_360",
+            "bytes_dirname": "Android",
+            "channel": "360_appstore",
+        },
+        "pre_build_cmds": [],
+        "post_build_cmds": [
+            "echo 'do nothing for {target}'"
+        ]
     },
-    "xiaomi" : { # xiao mi
-        "enabled": False,
-        "platform": "android",
-        "name" : "LMDemo",
-        "id" : "com.uniq.LMDemo.mi",
-        "macro": "FOR_XIAOMI",
-        "bytes_dirname": "Android",
-        "post_build_cmds": {
-            "enabled": False
-            # override the default post build scripts
-        }
-    }
 }
 
 # ----------------------------------------------

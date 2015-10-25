@@ -50,6 +50,24 @@ public class BatchBuildMenu {
 		                  BuildTarget.WP8Player, 
 		                  BuildOptions.Development | BuildOptions.ConnectWithProfiler);
 	}
+
+	[MenuItem ("LMTools/Build Current Configured")]
+	public static void BuildConfig()
+	{
+		switch (BatchBuildConfig.PLATFORM) {
+		case "ios":
+			BuildIOS();
+			break;
+		case "android":
+			BuildAndroid();
+			break;
+		case "wp8":
+			BuildWP8();
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 #endif
