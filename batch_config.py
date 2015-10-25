@@ -186,8 +186,8 @@ ARCHIVE_CMDS = [
 ]
 
 DEPLOY_ASSETS_CMDS = [
-    "scp bytes.tgz {assets_user}@{assets_host}:{assets_dir}/bytes.tgz",
-    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -r {bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname};'",
+    "scp {target_path}/bytes.tgz {assets_user}@{assets_host}:{assets_dir}/bytes.tgz",
+    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -rf {bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname}; rm bytes.tgz; ls -la;'",
 ]
 
 POST_BUILD_CMDS = PACK_ASSETS_CMDS + ARCHIVE_CMDS + DEPLOY_ASSETS_CMDS
