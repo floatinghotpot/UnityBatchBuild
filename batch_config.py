@@ -52,7 +52,7 @@ BUILDMODE_VARS = {
     },
 }
 
-BUILDMODE_VARS["daily"] = BUILDMODE_VARS["release"];
+BUILDMODE_VARS["daily"] = BUILDMODE_VARS["release"].copy()
 
 # ----------------------------------------------
 EXTRA_VARS_DEBUG = {
