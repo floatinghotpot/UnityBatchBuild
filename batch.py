@@ -18,7 +18,7 @@ import batch_config
 buildPySyntax = ("\nSyntax: batch.py <action> <target> <mode>\n" + 
                  "<action>     clean | build | archive\n" +
                  "<target>     ios | android | amazon | 360 | ... | all\n" +
-                 "<mode>       --debug | --release | --daily | -d | -r\n" )
+                 "<mode>       --debug | --release | --daily | -d | -r | -l\n" )
 
 # ----------------------------------------------
 def ModifyUnityMacro( target_inf ):
@@ -68,13 +68,15 @@ def CallUnity( target_inf ):
 
     ModifyUnityCode( target_inf )
 
-    unityCmd = target_inf['vars']['unity_cmd']
-    print "\nRunning command: " + unityCmd
-    print "-----------------------------------------------------------------"
-    ret = os.system( unityCmd )
-    if ret != 0:
-        os.system("cat ~/Library/Logs/Unity/Editor.log");
-        exit(0)
+    cmds = [
+        target_inf['vars']['mkdir_targetdir_cmd'],
+        target_inf['vars']['unity_cmd']
+    ]
+    for cmd in cmds:
+        print "    " + cmd
+        ret = os.system( cmd )
+        if ret != 0:
+            exit(0)
 
     print "-----------------------------------------------------------------"
     print "------------------ Run Unity End --------------------------------"
@@ -152,10 +154,6 @@ def CallXcodeBuild( target_inf ):
     if os.system(xcodeCmd) != 0:
         exit(0)
 
-    outApp = vardict['xcode_outapptry']
-    if not os.path.exists(outApp):
-        outApp = vardict['xcode_outapp']
-        
     #provisionfile = batch_config.DIR_INFO['ios_profile_dir'] + "/" + provision_cert['provision'] + ".mobileprovision"
     #targetProvision = outputApp + "/embedded.mobileprovision"
     #tmpIpa = xcodeprojPath + "/tmp.ipa"
@@ -163,12 +161,13 @@ def CallXcodeBuild( target_inf ):
     #cpCmd = "cp \"" + provisionfile + "\" " + targetProvision
     #codesignCmd = "codesign -f -s \"" + provision_cert['cert'] + "\" " + outputApp
 
-    makeIpaCmd = "xcrun -sdk iphoneos PackageApplication -v " + outApp + " -o " + vardict['xcode_outipa']
-    Cmds = [ makeIpaCmd ]
-    for Cmd in Cmds:
-        print "\nRunning command: " + Cmd
-        if os.system(Cmd) != 0:
-            exit(0)
+    if os.path.exists(vardict['xcode_outapptry']):
+        app2ipaCmd = vardict['xcode_apptry2ipa_cmd']
+    else:
+        app2ipaCmd = vardict['xcode_app2ipa_cmd']
+    print "\nRunning command: " + app2ipaCmd
+    if os.system(  app2ipaCmd ) != 0:
+        exit(0)
 
     print "---------------------------------------------------------------"
     print "------------------ Run Xcode End ------------------------------"
@@ -325,18 +324,12 @@ def main( argv ) :
         print buildPyFile + " not under Unity project Assets, abort."
         exit(0)
 
-    batch_config.AUTO_VARS['batchpydir_path'] = batchPyDirPath
-    batch_config.AUTO_VARS['unityprojdir_path'] = projPath
-    batch_config.AUTO_VARS['date'] = datetime.datetime.today().strftime('%Y%m%d')
-    batch_config.AUTO_VARS['svn_revision'] = str(getSvnRevision())
-
+    # ----------------------------------------------
+    # parse args to get targets & build mode
     do_clean = False
     do_build = False
     do_archive = False
     buildMode = "debug"
-
-    # ----------------------------------------------
-    # parse args to get targets & build mode
     targets = []
     for arg in argv[1:]:
         if arg == "clean":
@@ -350,7 +343,7 @@ def main( argv ) :
             buildMode="release"
         elif arg == "--debug" or arg == '-d':
             buildMode="debug"
-        elif arg == "--daily":
+        elif arg == "--daily" or arg == '-l':
             buildMode="daily"
         
         elif arg == "all":
@@ -364,40 +357,35 @@ def main( argv ) :
         else:
             addTargetToList(arg, targets)
 
-    if len(targets) == 0:
+    # ----------------------------------------------
+    if len(targets) > 0:
+        print "    Package targets: " + (", ".join(targets))
+        print "    Build mode: " + buildMode
+    else:
         print buildPySyntax
         print "Error: no package target specified. Abort.\n"
         exit(0)
 
-    # --- prepare target info ---
+    batch_config.AUTO_VARS['batchpydir_path'] = batchPyDirPath
+    batch_config.AUTO_VARS['unityprojdir_path'] = projPath
+    batch_config.AUTO_VARS['date'] = datetime.datetime.today().strftime('%Y%m%d')
+    batch_config.AUTO_VARS['svn_revision'] = str(getSvnRevision())
+    
     for target in targets:
         target_inf = batch_config.TARGET_PACKAGES[ target ]
         prepareTargetInfo( target, buildMode, target_inf )
         
-    # ----------------------------------------------
-    # build targets one by one
-    if len(targets) > 0:
-        print "    Package targets: " + (", ".join(targets))
-        print "    Build mode: " + buildMode
-
-    if do_clean:
-        for target in targets:
-            target_inf = batch_config.TARGET_PACKAGES[ target ]
+        if do_clean:
             targetDirPath = target_inf['vars']['target_path']
             cleanCmd = "rm -r " + targetDirPath
             print "    " + cleanCmd
             if os.path.exists(targetDirPath):
                 os.system( cleanCmd )
-                pass
-
-    if do_build:
-        for target in targets:
-            target_inf = batch_config.TARGET_PACKAGES[ target ]
+            
+        if do_build:
             BuildPackage( target_inf )
 
-    if do_archive:
-        for target in targets:
-            target_inf = batch_config.TARGET_PACKAGES[ target ]
+        if do_archive:
             ArchivePackage( target_inf )
 
     print "---------------------------------------------------------------"

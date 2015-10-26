@@ -131,17 +131,21 @@ AUTO_VARS = {
     "package": "{target_path}/{name}{package_ext}",
     "archive_name": "{name}-{target}-{version}{package_ext}",
     
+    # unity related
     "unity_smcs_path": "{unityprojdir_path}/Assets/smcs.rsp",
     "unity_buildmethod": "BatchBuildMenu.BuildConfig",
     "unity_cmd": "/Applications/Unity/Unity.app/Contents/MacOS/Unity -projectPath {unityprojdir_path} -executeMethod {unity_buildmethod} {unity_cmdflag} -batchmode -quit -logFile",
     
+    # xcode related
     "xcodeprojdir_path": "{target_path}",
     "xcodeplist_path": "{target_path}/Info.plist",
     "xcode_pbxproj_path": "{xcodeprojdir_path}/Unity-iPhone.xcodeproj/project.pbxproj",
     "xcode_cmd": "/usr/bin/xcodebuild clean build -project {xcodeprojdir_path}/Unity-iPhone.xcodeproj PROVISIONING_PROFILE=\"{provision_uuid}\" CODE_SIGN_IDENTITY=\"{ios_cert}\" {xcode_cmdflag}",
+    
     "xcode_outapptry": "{xcodeprojdir_path}/build/{name}.app",
     "xcode_outipa": "{xcodeprojdir_path}/{name}.ipa",
-    "xcode_makeipacmd": "/usr/bin/xcrun -sdk iphoneos PackageApplication -v {xcode_outapp} -o {xcode_outipa}",
+    "xcode_apptry2ipa_cmd": "/usr/bin/xcrun -sdk iphoneos PackageApplication -v {xcode_outapptry} -o {xcode_outipa}",
+    "xcode_app2ipa_cmd": "/usr/bin/xcrun -sdk iphoneos PackageApplication -v {xcode_outapp} -o {xcode_outipa}",
 }
 
 # ----------------------------------------------
