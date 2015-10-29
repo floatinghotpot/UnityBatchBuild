@@ -5,7 +5,9 @@ import sys, os, commands
 import datetime, time
 import re, subprocess
 import shutil, glob, zipfile
-import ftplib, socket
+import smtplib
+
+from email.mime.text import MIMEText
 
 from Foundation import NSMutableDictionary
 
@@ -15,10 +17,10 @@ from mod_pbxproj import XcodeProject
 # config data
 import batch_config
 
-buildPySyntax = ("\nSyntax: batch.py <action> <target> <mode>\n" + 
-                 "<action>     clean | build | archive\n" +
+buildPySyntax = ("\nSyntax: batch.py <target> <mode>\n" + 
                  "<target>     ios | android | amazon | 360 | ... | all\n" +
-                 "<mode>       --debug | --release | --daily | -d | -r | -l\n" )
+                 "<mode>       --debug | --release | --daily | -d | -r | -l \n" +
+                 "<mode>       --no-clean | --no-build | --no-archive | -nc | -nb | -na\n" )
 
 # ----------------------------------------------
 def ModifyUnityMacro( target_inf ):
@@ -76,7 +78,7 @@ def CallUnity( target_inf ):
         print "    " + cmd
         ret = os.system( cmd )
         if ret != 0:
-            exit(0)
+            exitWithMsg(target_inf, ret, cmd)
 
     print "-----------------------------------------------------------------"
     print "------------------ Run Unity End --------------------------------"
@@ -151,8 +153,9 @@ def CallXcodeBuild( target_inf ):
     vardict = target_inf['vars']
     xcodeCmd = vardict['xcode_cmd']
     print "\nRunning command: " + xcodeCmd
-    if os.system(xcodeCmd) != 0:
-        exit(0)
+    ret = os.system(xcodeCmd)
+    if ret != 0:
+        exitWithMsg(target_inf, ret, xcodeCmd)
 
     #provisionfile = batch_config.DIR_INFO['ios_profile_dir'] + "/" + provision_cert['provision'] + ".mobileprovision"
     #targetProvision = outputApp + "/embedded.mobileprovision"
@@ -166,41 +169,13 @@ def CallXcodeBuild( target_inf ):
     else:
         app2ipaCmd = vardict['xcode_app2ipa_cmd']
     print "\nRunning command: " + app2ipaCmd
-    if os.system(  app2ipaCmd ) != 0:
-        exit(0)
+    ret = os.system(  app2ipaCmd )
+    if ret != 0:
+        exitWithMsg(target_inf, ret, app2ipaCmd)
 
     print "---------------------------------------------------------------"
     print "------------------ Run Xcode End ------------------------------"
     print "---------------------------------------------------------------"
-
-    return
-
-# ----------------------------------------------
-def BuildPackage( target_inf ):
-    CallUnity( target_inf )
-
-    vardict = target_inf['vars']
-    platform = vardict['platform']
-    if platform == "ios":
-        CallXcodeBuild( target_inf )
-        pass
-    elif platform == "android":
-        pass
-    elif platform == "wp8":
-        pass
-
-    return
-
-# ----------------------------------------------
-def ArchivePackage( target_inf ):
-    print "Running batch commands:"
-    cmds = target_inf['post_build_cmds']
-    for cmd in cmds:
-        print "    " + cmd
-        status, output = commands.getstatusoutput( cmd )
-        print output
-        if status != 0:
-            exit(0)
 
     return
 
@@ -215,7 +190,7 @@ def addTargetToList(target, targets):
             targets.append( target )
             return
         
-    print "Error: " + arg + " not configured in TARGET_PACKAGES\n"
+    print "Error: target '" + target + "' not configured in TARGET_PACKAGES\n"
     exit(0)
 
     return
@@ -270,6 +245,7 @@ def expandTemplateText(template, vardict):
 def prepareTargetInfo( target, buildMode, target_inf ):
     tmp = {};
     tmp.update( batch_config.COMMON_VARS )
+    tmp.update( batch_config.NOTIFY_VARS )
     tmp.update( batch_config.BUILDMODE_VARS[ buildMode ] )
     tmp.update( batch_config.AUTO_VARS )
     tmp.update( target_inf[ "vars" ] )
@@ -311,7 +287,69 @@ def prepareTargetInfo( target, buildMode, target_inf ):
     printList( post_cmds )
     print "---------------------------------------------------------------"
     return
+
+# ----------------------------------------------
+def SendEmail( target_inf, subject, content ):
+    vardict = target_inf['vars']
     
+    msg = MIMEText( content )
+    msg['Subject'] = subject
+    msg['From'] = vardict['email_from']
+    msg['To'] = vardict['email_to']
+    
+    s = smtplib.SMTP( vardict['email_smtp_host'] )
+    if "email_user" in vardict and "email_passwd" in vardict:
+        s.login(vardict["email_user"], vardict["email_passwd"])
+        
+    print "Sending email to " + vardict['email_to']
+    print "---------------------------------------------------------------"
+    print( content )
+    print "---------------------------------------------------------------"
+    s.sendmail(msg['From'], [msg['To']], msg.as_string() )
+    s.quit()
+
+    return
+
+def SendQQMsg( target_inf, content ):
+    return
+
+def sendMsg(target_inf, err, msg):
+    vardict = target_inf['vars']
+    
+    subject = ""
+    content = ""
+    
+    if err == 0:
+        package_path = vardict['package']
+        if os.path.exists( package_path ):
+            filesize = int(os.path.getsize(package_path)/1024/1024)
+        else:
+            filesize = 0
+        
+        subject = vardict['success_subject']
+        
+        content = vardict['success_content']
+        content = content.replace('{package_size}',str(filesize))
+        content = content.replace('{now}',(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')))
+        
+    else:
+        subject = vardict['fail_subject']
+        
+        content = vardict['fail_content']
+        content = content.replace('{error_code}',str(err))
+        content = content.replace('{error_message}',msg)
+        content = content.replace('{now}',(datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')))
+            
+    if vardict['enable_email'] == 'yes':
+        SendEmail(target_inf, subject, content)
+
+    if vardict['enable_qq'] == 'yes':
+        SendQQMsg(target_inf, content)
+
+def exitWithMsg( target_inf, err, msg ):
+    sendMsg(target_inf, err, msg)
+    exit(err)
+
 # ----------------------------------------------
 def main( argv ) :
     # ----------------------------------------------
@@ -326,26 +364,29 @@ def main( argv ) :
 
     # ----------------------------------------------
     # parse args to get targets & build mode
-    do_clean = False
-    do_build = False
-    do_archive = False
+    do_clean = True
+    do_build = True
+    do_archive = True
+    do_email = True
     buildMode = "debug"
     targets = []
     for arg in argv[1:]:
-        if arg == "clean":
-            do_clean = True
-        elif arg == "build":
-            do_build = True
-        elif arg == "archive":
-            do_archive = True
-            
-        elif arg == "--release" or arg == '-r':
+        if arg == "--release" or arg == '-r':
             buildMode="release"
         elif arg == "--debug" or arg == '-d':
             buildMode="debug"
         elif arg == "--daily" or arg == '-l':
             buildMode="daily"
         
+        elif arg == "--no-clean" or arg == "-nc":
+            do_clean = False
+        elif arg == "--no-build" or arg == '-nb':
+            do_build = False
+        elif arg == "--no-archive" or arg == '-na':
+            do_archive = False
+        elif arg == "--no-email" or arg == '-ne':
+            do_email = False
+            
         elif arg == "all":
             for key, target_inf in batch_config.TARGET_PACKAGES.iteritems():
                 enabled = target_inf['enabled']
@@ -375,20 +416,40 @@ def main( argv ) :
         target_inf = batch_config.TARGET_PACKAGES[ target ]
         prepareTargetInfo( target, buildMode, target_inf )
         
+        if do_email:
+            target_inf['vars']['enable_email'] = "yes"
+        else:
+            target_inf['vars']['enable_email'] = "no"
+            
         if do_clean:
             targetDirPath = target_inf['vars']['target_path']
-            cleanCmd = "rm -r " + targetDirPath
+            cleanCmd = "rm -r " + targetDirPath + "/*"
             print "    " + cleanCmd
             if os.path.exists(targetDirPath):
                 os.system( cleanCmd )
             
         if do_build:
-            BuildPackage( target_inf )
-
+            CallUnity( target_inf )
+            platform = target_inf['vars']['platform']
+            if platform == "ios":
+                CallXcodeBuild( target_inf )
+                pass
+            elif platform == "android":
+                pass
+            elif platform == "wp8":
+                pass
+            
         if do_archive:
-            ArchivePackage( target_inf )
+            cmds = target_inf['post_build_cmds']
+            for cmd in cmds:
+                print "    " + cmd
+                status, output = commands.getstatusoutput( cmd )
+                print output
+                if status != 0:
+                    exitWithMsg(target_inf, status, output)
+                    
+        sendMsg(target_inf, 0, "ok")
 
-    print "---------------------------------------------------------------"
     print "----------------------- Done ----------------------------------"
     print "---------------------------------------------------------------"
     return

@@ -28,6 +28,43 @@ COMMON_VARS = {
     "macro": "LM"
 }
 
+NOTIFY_VARS = {
+    # email info
+    "enable_email": "no",
+    "email_smtp_host": "192.168.0.200",
+    "email_from": "no-reply@rjfun.com",
+    "email_to": "all@rjfun.com",
+    #"email_user": "no-reply@rjfun.com",
+    #"email_passwd": "xxxxx",
+    
+    # qq info
+    "enable_qq": "no",
+    
+    # message
+    "success_subject": "[Good news] {name} {target} Build Success",
+    "success_content": (
+        "Dir all,\n\n" +
+        "Congratulations, the build is succesful.\n\n" +
+        "Packge download URL: {archive_download_url}\n\n" +
+        "Note: \n"+
+        "Version: {version}\n" +
+        "Size: {package_size} MB\n" +
+        "From [BatchBuild]\n" +
+        "{now}\n" +
+        ""
+     ),
+    "fail_subject": "[Bad news] {name} {target} Build Failed",
+    "fail_content": (
+        "Dear all,\n\n" +
+        "Sorry, the build failed!\n\n" +
+        "Error Code: {error_code}\n" +
+        "Reason: {error_message}\n\n" +
+        "From [BatchBuild]\n" +
+        "{now}\n" +
+        ""
+     ),
+}
+
 # ----------------------------------------------
 BUILDMODE_VARS = {
     "debug": {
@@ -62,14 +99,13 @@ EXTRA_VARS_DEBUG = {
     "archive_dir": "~/tmp",
     "archive_usergroup": "liming:staff",
 
-    "assets_host": "localhost",
+    "assets_host": "192.168.0.200",
     "assets_user": "liming",
     "assets_dir": "~/public_html",
     "assets_usergroup": "liming:staff",
 
     # for source code
     "gameserver_host": "192.168.0.200",
-    "gameserver_port": "22322",
     "asset_download_url": "http://{assets_host}/~{assets_user}",
 }
 
@@ -77,36 +113,36 @@ EXTRA_VARS_DAILY = {
     # for cmds
     "archive_host": "192.168.0.200",
     "archive_user": "root",
-    "archive_dir": "/home/public/版本归档/{date}",
+    "archive_dir": "/var/www/html/{date}",
     "archive_usergroup": "nobody:nogroup",
+    "archive_download_url": "http://{archive_host}/{date}/{archive_name}",
 
     "assets_host": "192.168.0.200",
     "assets_user": "root",
-    "assets_dir": "/var/www/html",
+    "assets_dir": "/var/www/html/assets",
     "assets_usergroup": "nobody:nogroup",
 
     # for source code
     "gameserver_host": "192.168.0.200",
-    "gameserver_port": "22322",
-    "asset_download_url": "http://{assets_host}",
+    "asset_download_url": "http://{assets_host}/assets",
 }
 
 EXTRA_VARS_RELEASE = {
-    # extra vars for cmds or sources
+    # for cmds
     "archive_host": "192.168.0.200",
     "archive_user": "root",
-    "archive_dir": "/home/public/版本归档/{date}",
+    "archive_dir": "/var/www/html/{date}",
     "archive_usergroup": "nobody:nogroup",
+    "archive_download_url": "http://{archive_host}/{date}/{archive_name}",
 
-    "assets_host": "120.24.242.150",
+    "assets_host": "192.168.0.200",
     "assets_user": "root",
-    "assets_dir": "/var/www/html",
+    "assets_dir": "/var/www/html/assets",
     "assets_usergroup": "nobody:nogroup",
 
     # for source code
-    "gameserver_host": "120.24.242.150",
-    "gameserver_port": "22322",
-    "asset_download_url": "http://{assets_host}",
+    "gameserver_host": "192.168.0.200",
+    "asset_download_url": "http://{assets_host}/assets",
 }
 
 BUILDMODE_VARS['debug'].update(EXTRA_VARS_DEBUG)
@@ -115,13 +151,14 @@ BUILDMODE_VARS['release'].update(EXTRA_VARS_RELEASE)
 
 # ----------------------------------------------
 AUTO_VARS = {
-    # auto detect
-    "unityprojdir_path" : "",
-    "batchpydir_path" : "",
-    "svn_revision" : "0",
-    "date" : "20150101",
-    
-    "package_ext": ".ipa",
+    # --- auto detect ---
+    #"unityprojdir_path" : "",
+    #"batchpydir_path" : "",
+    #"svn_revision" : "0",
+    #"date" : "20150101",
+    #"package_ext": ".ipa",
+    #"package_size": "0",
+    #"now": "2015/10/20 10:10:10",
     
     # auto expand
     "res_dir": "/Res/{target}",
@@ -134,6 +171,7 @@ AUTO_VARS = {
     # unity related
     "unity_smcs_path": "{unityprojdir_path}/Assets/smcs.rsp",
     "unity_buildmethod": "BatchBuildMenu.BuildConfig",
+    "mkdir_targetdir_cmd": "mkdir -p {target_path}",
     "unity_cmd": "/Applications/Unity/Unity.app/Contents/MacOS/Unity -projectPath {unityprojdir_path} -executeMethod {unity_buildmethod} {unity_cmdflag} -batchmode -quit -logFile",
     
     # xcode related
@@ -161,7 +199,6 @@ SOURCE_FILES = [
         "   public static string PLATFORM = \"{platform}\";\n" +
         "   public static string TARGET_DIR = \"{target_dir}\";\n" +
         "   public static string DEFINE_MACRO = \"{macro}\";\n" +
-        "   public static string DIST_CHANNEL = \"{channel}\";\n" +
         "}"),
     }
 ]
@@ -190,8 +227,9 @@ ARCHIVE_CMDS = [
 ]
 
 DEPLOY_ASSETS_CMDS = [
+    "ssh {assets_user}@{assets_host} 'mkdir -p {assets_dir}'",
     "scp {target_path}/bytes.tgz {assets_user}@{assets_host}:{assets_dir}/bytes.tgz",
-    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -rf {bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname}; rm bytes.tgz; ls -la;'",
+    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -rf ./{bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname}; rm bytes.tgz; ls -la;'",
 ]
 
 POST_BUILD_CMDS = PACK_ASSETS_CMDS + ARCHIVE_CMDS + DEPLOY_ASSETS_CMDS
@@ -308,14 +346,14 @@ def ModifyXcodeProject( project, buildMode ):
     # it's required by iWatch APP, but optional for iOS
     project.remove_flags ( {
             'ENABLE_BITCODE' : 'YES',
-            'ARCHS' : 'arm7v',
+            #'ARCHS' : 'arm7v',
             'IPHONEOS_DEPLOYMENT_TARGET': '4.3',
             'OTHER_LDFLAGS':'-all_load'
         } );
     
     project.add_flags( {
             'ENABLE_BITCODE' : 'NO',
-            'ARCHS' : '$(ARCHS_STANDARD)',
+            #'ARCHS' : '$(ARCHS_STANDARD)',
             'IPHONEOS_DEPLOYMENT_TARGET': '6.0'
         } )
 
