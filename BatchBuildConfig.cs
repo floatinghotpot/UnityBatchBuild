@@ -6,5 +6,4 @@ public class BatchBuildConfig {
    public static string PLATFORM = "ios";
    public static string TARGET_DIR = "/Target/ios";
    public static string DEFINE_MACRO = "FOR_IOS";
-   public static string DIST_CHANNEL = "appstore";
 }

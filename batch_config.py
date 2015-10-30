@@ -39,12 +39,14 @@ NOTIFY_VARS = {
     
     # qq info
     "enable_qq": "no",
+    "qq_sendtype": "group",
+    "qq_sendto": "2503869532",
+    "qqbot_url": "http://localhost:3000/send",
     
     # message
     "success_subject": "[Good news] {name} {target} Build Success",
     "success_content": (
-        "Dir all,\n\n" +
-        "Congratulations, the build is succesful.\n\n" +
+        "Dir all, congratulations, the build is succesful.\n\n" +
         "Packge download URL: {archive_download_url}\n\n" +
         "Note: \n"+
         "Version: {version}\n" +
@@ -55,8 +57,7 @@ NOTIFY_VARS = {
      ),
     "fail_subject": "[Bad news] {name} {target} Build Failed",
     "fail_content": (
-        "Dear all,\n\n" +
-        "Sorry, the build failed!\n\n" +
+        "Dear all, sorry, the build failed!\n\n" +
         "Error Code: {error_code}\n" +
         "Reason: {error_message}\n\n" +
         "From [BatchBuild]\n" +

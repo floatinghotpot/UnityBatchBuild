@@ -6,6 +6,7 @@ import datetime, time
 import re, subprocess
 import shutil, glob, zipfile
 import smtplib
+import requests
 
 from email.mime.text import MIMEText
 
@@ -20,7 +21,9 @@ import batch_config
 buildPySyntax = ("\nSyntax: batch.py <target> <mode>\n" + 
                  "<target>     ios | android | amazon | 360 | ... | all\n" +
                  "<mode>       --debug | --release | --daily | -d | -r | -l \n" +
-                 "<mode>       --no-clean | --no-build | --no-archive | -nc | -nb | -na\n" )
+                 "<mode>       --no-clean | --no-build | --no-archive | -nc | -nb | -na\n" +
+                 "<mode>       --no-email | --no-qq | -ne | -nq\n" +
+                "")
 
 # ----------------------------------------------
 def ModifyUnityMacro( target_inf ):
@@ -311,6 +314,13 @@ def SendEmail( target_inf, subject, content ):
     return
 
 def SendQQMsg( target_inf, content ):
+    vardict = target_inf['vars']
+    r = requests.post(vardict['qqbot_url'], data = {
+            "type": vardict['qq_sendtype'],
+            "to": vardict['qq_sendto'],
+            "msg": content
+        })
+    print r.text
     return
 
 def sendMsg(target_inf, err, msg):
@@ -368,7 +378,8 @@ def main( argv ) :
     do_build = True
     do_archive = True
     do_email = True
-    buildMode = "debug"
+    do_qq = True
+    buildMode = "daily"
     targets = []
     for arg in argv[1:]:
         if arg == "--release" or arg == '-r':
@@ -386,6 +397,8 @@ def main( argv ) :
             do_archive = False
         elif arg == "--no-email" or arg == '-ne':
             do_email = False
+        elif arg == "--no-qq" or arg == '-nq':
+            do_qq = False
             
         elif arg == "all":
             for key, target_inf in batch_config.TARGET_PACKAGES.iteritems():
@@ -416,11 +429,12 @@ def main( argv ) :
         target_inf = batch_config.TARGET_PACKAGES[ target ]
         prepareTargetInfo( target, buildMode, target_inf )
         
-        if do_email:
-            target_inf['vars']['enable_email'] = "yes"
-        else:
+        if not do_email:
             target_inf['vars']['enable_email'] = "no"
-            
+
+        if not do_qq:
+            target_inf['vars']['enable_qq'] = "no"
+
         if do_clean:
             targetDirPath = target_inf['vars']['target_path']
             cleanCmd = "rm -r " + targetDirPath + "/*"
