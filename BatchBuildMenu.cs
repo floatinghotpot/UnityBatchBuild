@@ -6,19 +6,16 @@ using UnityEditor;
 
 public class BatchBuildMenu {
 	
-	// --- modify for your purpose ---
-	
 	public static string[] SCENES = {
-		// add your scene here
+		// TODO: add your scene here
+
 	};
-	
-	// --- build method & menu ---
 	
 	[MenuItem ("LMTools/Build Android")] 
 	public static void BuildAndroid () 
 	{  
-		// TODO: AssetBundleBuildConfig.buildAndroidAssetBundle();
-		
+		// TODO: Build streaming assets for Android
+
 		BatchBuild.Build ( 
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
@@ -30,6 +27,8 @@ public class BatchBuildMenu {
 	[MenuItem ("LMTools/Build IOS")] 
 	public static void BuildIOS () 
 	{          
+		// TODO: Build streaming assets for iOS
+
 		BatchBuild.Build ( 
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
@@ -41,8 +40,8 @@ public class BatchBuildMenu {
 	[MenuItem ("LMTools/Build WP8")]
 	public static void BuildWP8()
 	{
-		// TODO: AssetBundleBuildConfig.buildWP8AssetBundle();
-		
+		// TODO: Build streaming assets for WP8
+
 		BatchBuild.Build ( 
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
