@@ -58,7 +58,7 @@ $ git clone https://github.com/floatinghotpot/UnityBatchBuild BatchBuild
 # ... configure the build settings in build_config.py ...
 
 # start batch build
-./batch.py all
+BatchBuild/Editor/batch.py all
 ```
 
 More options:
