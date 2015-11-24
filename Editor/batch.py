@@ -8,6 +8,7 @@ import shutil, glob, zipfile
 import smtplib
 import requests
 
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from Foundation import NSMutableDictionary
@@ -295,10 +296,11 @@ def prepareTargetInfo( target, buildMode, target_inf ):
 def SendEmail( target_inf, subject, content ):
     vardict = target_inf['vars']
     
-    msg = MIMEText( content )
+    msg = MIMEMultipart("alternative")
     msg['Subject'] = subject
     msg['From'] = vardict['email_from']
     msg['To'] = vardict['email_to']
+    msg.attach( MIMEText( content, 'plain', 'utf-8' ) )
     
     s = smtplib.SMTP( vardict['email_smtp_host'] )
     if "email_user" in vardict and "email_passwd" in vardict:
@@ -428,7 +430,7 @@ def main( argv ) :
     for target in targets:
         target_inf = batch_config.TARGET_PACKAGES[ target ]
         prepareTargetInfo( target, buildMode, target_inf )
-        
+
         if not do_email:
             target_inf['vars']['enable_email'] = "no"
 
@@ -441,8 +443,15 @@ def main( argv ) :
             print "    " + cleanCmd
             if os.path.exists(targetDirPath):
                 os.system( cleanCmd )
-            
+
         if do_build:
+            cmds = target_inf['pre_build_cmds']
+            for cmd in cmds:
+                print "    " + cmd
+                status, output = commands.getstatusoutput( cmd )
+                print output
+                if status != 0:
+                    exitWithMsg(target_inf, status, output)
             CallUnity( target_inf )
             platform = target_inf['vars']['platform']
             if platform == "ios":
@@ -452,7 +461,7 @@ def main( argv ) :
                 pass
             elif platform == "wp8":
                 pass
-            
+
         if do_archive:
             cmds = target_inf['post_build_cmds']
             for cmd in cmds:
@@ -461,7 +470,7 @@ def main( argv ) :
                 print output
                 if status != 0:
                     exitWithMsg(target_inf, status, output)
-                    
+
         sendMsg(target_inf, 0, "ok")
 
     print "----------------------- Done ----------------------------------"

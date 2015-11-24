@@ -17,50 +17,53 @@ import os
 
 # ----------------------------------------------
 COMMON_VARS = {
-    "name": "PokerKing",
-    "id": "com.rjfun.pokerking",
+    # app basic info
+    "name": "HelloGame",
+    "id": "com.rjfun.HelloGame",
     "major_version": "0.5",
-    "unity_smcs": "-define:MYGAME;EnableChinese;",
-    
+    "unity_smcs": "-define:RJFUN;",
+
     # overwrite by target config
     "target" : "ios",
     "platform": "ios",
-    "macro": "LM"
+    "macro": "RJ"
 }
 
 NOTIFY_VARS = {
-    # email info
+    # email info, need SMTP server running
     "enable_email": "no",
     "email_smtp_host": "192.168.0.200",
     "email_from": "no-reply@rjfun.com",
-    "email_to": "all@rjfun.com",
+    "email_to": "raymond@rjfun.com",
     #"email_user": "no-reply@rjfun.com",
     #"email_passwd": "xxxxx",
-    
-    # qq info
+
+    # qq info, need SmartQQ-bot running, see: https://github.com/floatinghotpot/qqbot
     "enable_qq": "no",
     "qq_sendtype": "group",
-    "qq_sendto": "2503869532",
-    "qqbot_url": "http://localhost:3000/send",
-    
+    "qq_sendto": "272923202",
+    "qqbot_url": "http://localhost:3200/send",
+
     # message
-    "success_subject": "[Good news] {name} {target} Build Success",
+    "success_subject": "[Notify] {name} {target} build success",
     "success_content": (
-        "Dir all, congratulations, the build is succesful.\n\n" +
-        "Packge download URL: {archive_download_url}\n\n" +
-        "Note: \n"+
+        "Dear all, the build succeed.\n\n" +
+        "Installation package: {archive_download_url}\n\n" +
+        "Notice：\n"+
         "Version: {version}\n" +
-        "Size: {package_size} MB\n" +
-        "From [BatchBuild]\n" +
+        "Package size: {package_size} MB\n" +
+        "Game server: {gameserver_host}\n" +
+        "In-game streaming assets download URL: {asset_download_url}\n\n" +
+        "From [SmartQQ-bot]\n" +
         "{now}\n" +
         ""
      ),
-    "fail_subject": "[Bad news] {name} {target} Build Failed",
+    "fail_subject": "[Notify] {name} {target} build failed",
     "fail_content": (
-        "Dear all, sorry, the build failed!\n\n" +
-        "Error Code: {error_code}\n" +
+        "Dear all, sorry, the build failed.\n\n" +
+        "Error code: {error_code}\n" +
         "Reason: {error_message}\n\n" +
-        "From [BatchBuild]\n" +
+        "From [SmartQQ-bot]\n" +
         "{now}\n" +
         ""
      ),
@@ -69,86 +72,100 @@ NOTIFY_VARS = {
 # ----------------------------------------------
 BUILDMODE_VARS = {
     "debug": {
-        "ios_cert": "iPhone Developer: Liming Xie (B3YVNBCEFU)",
-        "provision_uuid": "08cb9450-c4b4-4a56-8123-8cf1b46d7e56",
-        
+        "ios_cert": "iPhone Developer: Raymond Xie (B3YVNBCEFX)",
+        "provision_uuid": "3c390fb0-68c1-4613-910d-c67b9ae34991", # dev
+
         "unity_mode_smcs": "-define:DEV_VERSION;", 
         "unity_cmdflag": "-NoStrip -Development",
-        
+
         "xcode_cmdflag": "-configuration Debug",
         "xcode_outapp": "{xcodeprojdir_path}/build/Debug-iphoneos/{name}.app",
     },
-    "release": {
-        "ios_cert": "iPhone Distribution: Liming Xie (D92BDUZHUG)",
-        "provision_uuid": "aedff668-2431-4f2d-9199-c87c5a25be91",
-        
+    "daily": {
+        "ios_cert": "iPhone Distribution: Raymond Xie (D92BDUZHUX)",
+        "provision_uuid": "1c59430e-a7cc-4b3e-8c1e-f668a25d45df", # adhoc any
+
         "unity_mode_smcs": "-define:DIST_VERSION;CODESTRIPPER;",
         "unity_cmdflag": "",
-        
+
         "xcode_cmdflag": "-configuration Release",
         "xcode_outapp": "{xcodeprojdir_path}/build/Release-iphoneos/{name}.app",
     },
-}
+    "release": {
+        "ios_cert": "iPhone Distribution: Raymond Xie (D92BDUZHUX)",
+        "provision_uuid": "1c59430e-a7cc-4b3e-8c1e-f668a25d45de", # adhoc any
+        #"provision_uuid": "7b2bc67c-b3a3-41eb-b164-fd70f13154a2", # dist, app-store
 
-BUILDMODE_VARS["daily"] = BUILDMODE_VARS["release"].copy()
+        "unity_mode_smcs": "-define:DIST_VERSION;CODESTRIPPER;",
+        "unity_cmdflag": "",
+
+        "xcode_cmdflag": "-configuration Release",
+        "xcode_outapp": "{xcodeprojdir_path}/build/Release-iphoneos/{name}.app",
+    }
+}
 
 # ----------------------------------------------
 EXTRA_VARS_DEBUG = {
+    "email_to": "raymond@rjfun.com",
+    "enable_qq": "no",
     # for cmds
-    "archive_host": "localhost",
-    "archive_user": "liming",
-    "archive_dir": "~/tmp",
-    "archive_usergroup": "liming:staff",
+    "archive_host": "192.168.0.200",
+    "archive_user": "root",
+    "archive_dir": "/var/www/html/{name}/{date}",
+    "archive_usergroup": "nobody:nogroup",
+    "archive_download_url": "http://{archive_host}/{name}/{date}/{archive_name}",
 
     "assets_host": "192.168.0.200",
-    "assets_user": "liming",
-    "assets_dir": "~/public_html",
-    "assets_usergroup": "liming:staff",
+    "assets_user": "root",
+    "assets_dir": "/var/www/html/{name}/assets",
+    "assets_usergroup": "nobody:nogroup",
 
     # for source code
     "gameserver_host": "192.168.0.200",
-    "asset_download_url": "http://{assets_host}/~{assets_user}",
+    "asset_download_url": "http://{assets_host}/{name}/assets",
 }
 
 EXTRA_VARS_DAILY = {
+    "email_to": "all@rjfun.com",
     # for cmds
     "archive_host": "192.168.0.200",
     "archive_user": "root",
-    "archive_dir": "/var/www/html/{date}",
+    "archive_dir": "/var/www/html/{name}/{date}",
     "archive_usergroup": "nobody:nogroup",
-    "archive_download_url": "http://{archive_host}/{date}/{archive_name}",
+    "archive_download_url": "http://{archive_host}/{name}/{date}/{archive_name}",
 
     "assets_host": "192.168.0.200",
     "assets_user": "root",
-    "assets_dir": "/var/www/html/assets",
+    "assets_dir": "/var/www/html/{name}/assets",
     "assets_usergroup": "nobody:nogroup",
 
     # for source code
     "gameserver_host": "192.168.0.200",
-    "asset_download_url": "http://{assets_host}/assets",
+    "asset_download_url": "http://{assets_host}/{name}/assets",
 }
 
 EXTRA_VARS_RELEASE = {
-    # for cmds
+    "email_to": "all@rjfun.com",
+    # extra vars for cmds or sources
     "archive_host": "192.168.0.200",
     "archive_user": "root",
-    "archive_dir": "/var/www/html/{date}",
+    "archive_dir": "/var/www/html/{name}/{date}",
     "archive_usergroup": "nobody:nogroup",
-    "archive_download_url": "http://{archive_host}/{date}/{archive_name}",
+    "archive_download_url": "http://{archive_host}/{name}/{date}/{archive_name}",
 
-    "assets_host": "192.168.0.200",
+    "assets_host": "120.24.243.150",
     "assets_user": "root",
-    "assets_dir": "/var/www/html/assets",
+    "assets_dir": "/var/www/html/{name}/assets",
     "assets_usergroup": "nobody:nogroup",
 
     # for source code
-    "gameserver_host": "192.168.0.200",
-    "asset_download_url": "http://{assets_host}/assets",
+    "gameserver_host": "120.24.243.150",
+    "asset_download_url": "http://{assets_host}/{name}/assets",
 }
 
-BUILDMODE_VARS['debug'].update(EXTRA_VARS_DEBUG)
-BUILDMODE_VARS['daily'].update(EXTRA_VARS_DAILY)
-BUILDMODE_VARS['release'].update(EXTRA_VARS_RELEASE)
+BUILDMODE_VARS['debug'].update( EXTRA_VARS_DEBUG )
+BUILDMODE_VARS['daily'].update( EXTRA_VARS_DAILY )
+BUILDMODE_VARS['release'].update( EXTRA_VARS_RELEASE )
 
 # ----------------------------------------------
 AUTO_VARS = {
@@ -192,7 +209,7 @@ SOURCE_FILES = [
     {
     "filepath": "{batchpydir_path}/BatchBuildConfig.cs",
     "content": (
-        "// NOTICE: Auto overwritten with batch.py. Do not edit !!!\n" +
+        "// NOTICE: Auto overwritten with batch.py when build package. Do not edit !!!\n" +
         "public class BatchBuildConfig {\n" +
         "   public static string APP_NAME = \"{name}\";\n" +
         "   public static string APP_ID = \"{id}\";\n" +
@@ -201,7 +218,21 @@ SOURCE_FILES = [
         "   public static string TARGET_DIR = \"{target_dir}\";\n" +
         "   public static string DEFINE_MACRO = \"{macro}\";\n" +
         "}"),
-    }
+    },
+    {
+    "filepath": "{unityprojdir_path}/Assets/Script/Config/BuildSystemConfig.cs",
+    "content": (
+        "// NOTICE: Auto overwritten with batch.py when build package. Do not edit !!!\n" +
+        "public class BuildSystemConfig {\n" +
+        "    public static string GAME_SERVER_HOST = \"{gameserver_host}\";\n" +
+        "    public static string ASSETS_DOWNLOAD_URL = \"{asset_download_url}\";\n" +
+        "    public static string BUILD_VERSION = \"{version}\";\n" +
+        "}\n"),
+    },
+]
+
+PRE_BUILD_CMDS = [
+    "ls {unityprojdir_path}",
 ]
 
 # ----------------------------------------------
@@ -213,24 +244,24 @@ SOURCE_FILES = [
 PACK_ASSETS_CMDS = [
     # --- package streaming assets to tgz ---
     "mkdir ./{bytes_dirname}",
-    #"cp {unityproj_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
-    "tar cfz {target_path}/bytes.tgz {bytes_dirname}",
+    "cp {unityprojdir_path}/Assets/StreamingAssets/{bytes_dirname}/* ./{bytes_dirname}",
+    "tar cfz {target_path}/{target}-bytes.tgz {bytes_dirname}",
     "rm -r ./{bytes_dirname}",
-    "ls -la {target_path}/bytes.tgz",
+    "ls -la {target_path}/{target}-bytes.tgz",
 ]
 
 ARCHIVE_CMDS = [
     "ls -la {package}",
     "ssh {archive_user}@{archive_host} 'mkdir -p {archive_dir}'",
     "scp {package} {archive_user}@{archive_host}:{archive_dir}/{name}-{target}-{version}{package_ext}",
-    "scp {target_path}/bytes.tgz {archive_user}@{archive_host}:{archive_dir}/{name}-{target}-{version}.tgz",
+    "scp {target_path}/{target}-bytes.tgz {archive_user}@{archive_host}:{archive_dir}/{name}-{target}-{version}.tgz",
     "ssh {archive_user}@{archive_host} 'chown -R {archive_usergroup} {archive_dir}; ls -la {archive_dir}'",
 ]
 
 DEPLOY_ASSETS_CMDS = [
     "ssh {assets_user}@{assets_host} 'mkdir -p {assets_dir}'",
-    "scp {target_path}/bytes.tgz {assets_user}@{assets_host}:{assets_dir}/bytes.tgz",
-    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -rf ./{bytes_dirname}; tar xvf bytes.tgz; chown -R {assets_usergroup} {bytes_dirname}; rm bytes.tgz; ls -la;'",
+    "scp {target_path}/{target}-bytes.tgz {assets_user}@{assets_host}:{assets_dir}/{target}-bytes.tgz",
+    "ssh {assets_user}@{assets_host} 'cd {assets_dir}; rm -rf ./{bytes_dirname}; tar xvf {target}-bytes.tgz; chown -R {assets_usergroup} {bytes_dirname}; rm {target}-bytes.tgz; ls -la;'",
 ]
 
 POST_BUILD_CMDS = PACK_ASSETS_CMDS + ARCHIVE_CMDS + DEPLOY_ASSETS_CMDS
@@ -244,9 +275,8 @@ TARGET_PACKAGES = {
             "platform": "ios",
             "macro": "FOR_IOS",
             "bytes_dirname": "iPhone",
-            "channel": "appstore",
         },
-        "pre_build_cmds": [],
+        "pre_build_cmds": PRE_BUILD_CMDS + [],
         "post_build_cmds": POST_BUILD_CMDS + [
             "echo 'do something else for {target}'"
         ]
@@ -257,9 +287,8 @@ TARGET_PACKAGES = {
             "platform": "android",
             "macro": "FOR_ANDROID",
             "bytes_dirname": "Android",
-            "channel": "googleplay",
         },
-        "pre_build_cmds": [],
+        "pre_build_cmds": PRE_BUILD_CMDS + [],
         "post_build_cmds": POST_BUILD_CMDS + [
             "echo 'do something else for {target}'"
         ]
@@ -271,10 +300,9 @@ TARGET_PACKAGES = {
             "platform": "android",
             "macro": "FOR_AMAZON",
             "bytes_dirname": "Android",
-            "channel": "amazon_appstore",
         },
-        "pre_build_cmds": [],
-        "post_build_cmds": [
+        "pre_build_cmds": PRE_BUILD_CMDS + [],
+        "post_build_cmds": POST_BUILD_CMDS + [
             "echo 'do nothing for {target}'"
         ]
     },
@@ -285,10 +313,9 @@ TARGET_PACKAGES = {
             "platform": "android",
             "macro": "FOR_360",
             "bytes_dirname": "Android",
-            "channel": "360_appstore",
         },
-        "pre_build_cmds": [],
-        "post_build_cmds": [
+        "pre_build_cmds": PRE_BUILD_CMDS + [],
+        "post_build_cmds": POST_BUILD_CMDS + [
             "echo 'do nothing for {target}'"
         ]
     },
