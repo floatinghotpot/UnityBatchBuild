@@ -11,12 +11,11 @@ public class BatchBuildMenu {
 
 	};
 	
-	[MenuItem ("LMTools/Build Android")] 
-	public static void BuildAndroid () 
-	{  
+	[MenuItem ("Tools/Build Android")]
+	public static void BuildAndroid () {
 		// TODO: Build streaming assets for Android
 
-		BatchBuild.Build ( 
+		BatchBuild.Build (
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
 		                  BatchBuildConfig.APP_VERSION, 
@@ -24,12 +23,11 @@ public class BatchBuildMenu {
 		                  BuildOptions.Development | BuildOptions.ConnectWithProfiler);
 	} 
 	
-	[MenuItem ("LMTools/Build IOS")] 
-	public static void BuildIOS () 
-	{          
+	[MenuItem ("Tools/Build IOS")]
+	public static void BuildIOS () {
 		// TODO: Build streaming assets for iOS
 
-		BatchBuild.Build ( 
+		BatchBuild.Build (
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
 		                  BatchBuildConfig.APP_VERSION, 
@@ -37,12 +35,11 @@ public class BatchBuildMenu {
 		                  BuildOptions.Development | BuildOptions.ConnectWithProfiler);
 	}
 	
-	[MenuItem ("LMTools/Build WP8")]
-	public static void BuildWP8()
-	{
+	[MenuItem ("Tools/Build WP8")]
+	public static void BuildWP8() {
 		// TODO: Build streaming assets for WP8
 
-		BatchBuild.Build ( 
+		BatchBuild.Build (
 		                  BatchBuildConfig.APP_NAME, 
 		                  BatchBuildConfig.APP_ID, 
 		                  BatchBuildConfig.APP_VERSION, 
@@ -50,9 +47,8 @@ public class BatchBuildMenu {
 		                  BuildOptions.Development | BuildOptions.ConnectWithProfiler);
 	}
 
-	[MenuItem ("LMTools/Build Current Configured")]
-	public static void BuildConfig()
-	{
+	[MenuItem ("Tools/Build Current Configured")]
+	public static void BuildConfig() {
 		switch (BatchBuildConfig.PLATFORM) {
 		case "ios":
 			BuildIOS();
