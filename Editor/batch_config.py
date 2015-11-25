@@ -47,7 +47,7 @@ NOTIFY_VARS = {
     # message
     "success_subject": "[Notify] {name} {target} build success",
     "success_content": (
-        "Dear all, the build succeed.\n\n" +
+        "Dear all, the build is successful.\n\n" +
         "Installation package: {archive_download_url}\n\n" +
         "Notice：\n"+
         "Version: {version}\n" +
@@ -206,6 +206,7 @@ AUTO_VARS = {
 
 # ----------------------------------------------
 SOURCE_FILES = [
+    # this file is required by batch build menu (unity editor only)
     {
     "filepath": "{batchpydir_path}/BatchBuildConfig.cs",
     "content": (
@@ -219,6 +220,7 @@ SOURCE_FILES = [
         "   public static string DEFINE_MACRO = \"{macro}\";\n" +
         "}"),
     },
+    # this file is optional, can be referenced in your code
     {
     "filepath": "{unityprojdir_path}/Assets/Script/Config/BuildSystemConfig.cs",
     "content": (
